@@ -1,4 +1,3 @@
-
 /*-
  * Copyright (c) 2010 Edward Tomasz Napierala <trasz@FreeBSD.org>
  * All rights reserved.

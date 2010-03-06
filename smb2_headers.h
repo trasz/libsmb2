@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: smb2_headers.h,v 1.4 2010/03/05 14:59:21 trasz Exp $
+ * $Id$
  */
 
 #ifndef SMB2_HEADERS_H
