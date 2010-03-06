@@ -26,6 +26,9 @@
  * $Id$
  */
 
+#ifndef SMB2_CONNECTION_H
+#define	SMB2_CONNECTION_H
+
 #include <stdint.h>
 
 struct smb2_connection {
@@ -36,3 +39,5 @@ struct smb2_connection {
 
 void				smb2_connection_add_credits(struct smb2_connection *conn, int64_t credits);
 int64_t				smb2_connection_next_message_id(struct smb2_connection *conn);
+
+#endif /* !SMB2_CONNECTION_H */
