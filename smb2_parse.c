@@ -90,7 +90,7 @@ smb2_parse_packet_header(struct smb2_packet *p)
 	printf("credits granted: %d\n", ph->ph_credit_request_response);
 
 	if (ph->ph_status != SMB2_STATUS_SUCCESS)
-		errx(1, "smb2_parse_packet_header: bad status (%d)", ph->ph_status);
+		errx(1, "smb2_parse_packet_header: status not success (%s)", smb2_strstatus(ph->ph_status));
 
 	switch (ph->ph_command) {
 	case SMB2_NEGOTIATE:
