@@ -26,22 +26,42 @@
  * $Id: smb2_status.h,v 1.1 2010/03/05 14:59:21 trasz Exp $
  */
 
-#ifndef SMB2_STATUS_H
-#define	SMB2_STATUS_H
+#include <arpa/inet.h>
+#include <stdio.h>
+#include <string.h>
 
-#define	SMB2_STATUS_SUCCESS		0x00000000
+#include "smb2_status.h"
 
-#define	SMB2_STATUS_SEV(s)	((s & 0xC0000000) >> 30)
-#define	SMB2_STATUS_C(s)	((s & 0x20000000) >> 29)
-#define	SMB2_STATUS_N(s)	((s & 0x10000000) >> 28)
-#define	SMB2_STATUS_FACILITY(s)	((s & 0x0FFF0000) >> 16)
-#define	SMB2_STATUS_CODE(s)	(s & 0x0000FFFF)
+char *
+smb2_strstatus(int32_t status)
+{
+	static char str[256] = { '\0' };
 
-#define	SMB2_STATUS_SEVERITY_SUCCESS		0
-#define	SMB2_STATUS_SEVERITY_INFORMATIONAL	1
-#define	SMB2_STATUS_SEVERITY_WARNING		2
-#define	SMB2_STATUS_SEVERITY_ERROR		3
+	switch (SMB2_STATUS_SEV(status)) {
+	case SMB2_STATUS_SEVERITY_SUCCESS:
+		strcat(str, "success");
+		break;
+	case SMB2_STATUS_SEVERITY_INFORMATIONAL:
+		strcat(str, "informational");
+		break;
+	case SMB2_STATUS_SEVERITY_WARNING:
+		strcat(str, "warning");
+		break;
+	case SMB2_STATUS_SEVERITY_ERROR:
+		strcat(str, "error");
+		break;
+	default:
+		strcat(str, "unknown status");
+		break;
+	}
 
-char	*smb2_strstatus(int32_t status);
+	if (SMB2_STATUS_C(status))
+		strcat(str, ", customer defined");
 
-#endif /* !SMB2_STATUS_H */
+	if (SMB2_STATUS_N(status))
+		strcat(str, ", N not zero");
+
+	sprintf(str + strlen(str), ", facility 0x%x, code 0x%x", SMB2_STATUS_FACILITY(status), SMB2_STATUS_CODE(status));
+
+	return (str);
+}
