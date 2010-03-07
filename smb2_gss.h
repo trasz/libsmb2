@@ -29,6 +29,8 @@
 #ifndef SMB2_GSS_H
 #define	SMB2_GSS_H
 
-void	smb2_gss_receive(const void *buf, size_t length);
+struct smb2_connection;
+
+void	smb2_gss_receive(struct smb2_connection *conn, void *buf, size_t length);
 
 #endif /* !SMB2_GSS_H */
