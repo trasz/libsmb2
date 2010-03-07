@@ -34,7 +34,6 @@
 #include "smb2_connection.h"
 #include "smb2_gss.h"
 
-#if 0
 static void
 smb2_gss_err(const char *message, OM_uint32 maj_status_arg, OM_uint32 min_status_arg)
 {
@@ -42,7 +41,6 @@ smb2_gss_err(const char *message, OM_uint32 maj_status_arg, OM_uint32 min_status
 	gss_buffer_desc msg;
 
 	do {
-		// XXX: What to do with min_status_arg?
 		maj_status = gss_display_status(&min_status, maj_status_arg, GSS_C_GSS_CODE, GSS_C_NULL_OID, &more_msgs, &msg);
 		if (maj_status != GSS_S_COMPLETE)
 			errx(1, "smb2_gss_err: gss_display_status failed");
@@ -50,8 +48,8 @@ smb2_gss_err(const char *message, OM_uint32 maj_status_arg, OM_uint32 min_status
 		warnx("%s: major status: %s", message, (char *)msg.value);
 		gss_release_buffer(&min_status, &msg);
 	} while (more_msgs != 0);
+
 	do {
-		// XXX: What to do with min_status_arg?
 		maj_status = gss_display_status(&min_status, min_status_arg, GSS_C_MECH_CODE, GSS_C_NULL_OID, &more_msgs, &msg);
 		if (maj_status != GSS_S_COMPLETE)
 			errx(1, "smb2_gss_err: gss_display_status failed");
@@ -76,12 +74,10 @@ smb2_gss_get_service_name(gss_name_t *service_name)
 	if (maj_status != GSS_S_COMPLETE)
 		smb2_gss_err("smb2_gss_get_service_name", maj_status, min_status);
 }
-#endif
 
 void
 smb2_gss_receive(struct smb2_connection *conn, void *buf, size_t length)
 {
-#if 0
 	OM_uint32 maj_status, min_status;
 	gss_buffer_desc inbuf;
 	gss_ctx_id_t ctx = GSS_C_NO_CONTEXT;
@@ -97,11 +93,6 @@ smb2_gss_receive(struct smb2_connection *conn, void *buf, size_t length)
 
 	if (maj_status != GSS_S_COMPLETE && maj_status != GSS_S_CONTINUE_NEEDED)
 		smb2_gss_err("smb2_gss_receive", maj_status, min_status);
-#else
-	conn->c_token.length = length;
-	conn->c_token.value = malloc(length);
-	memcpy(conn->c_token.value, buf, length);
-#endif
 }
 
 void
