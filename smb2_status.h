@@ -29,6 +29,8 @@
 #ifndef SMB2_STATUS_H
 #define	SMB2_STATUS_H
 
+#include <stdint.h>
+
 #define	SMB2_STATUS_SUCCESS		0x00000000
 
 #define	SMB2_STATUS_SEV(s)	((s & 0xC0000000) >> 30)
