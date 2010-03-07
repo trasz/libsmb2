@@ -29,8 +29,10 @@
 #include <assert.h>
 #include <err.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "smb2_connection.h"
+#include "smb2_gss.h"
 #include "smb2_headers.h"
 #include "smb2_status.h"
 #include "smb2_packet.h"
@@ -77,6 +79,8 @@ static struct smb2_session_setup_request *
 smb2_packet_add_ssreq(struct smb2_packet *p)
 {
 	struct smb2_session_setup_request *ssreq;
+	void *buf;
+	size_t len;
 
 	smb2_packet_fill_header_sync(p, SMB2_SESSION_SETUP);
 
@@ -88,6 +92,10 @@ smb2_packet_add_ssreq(struct smb2_packet *p)
 	ssreq->ssreq_security_mode = SMB2_SSREQ_NEGOTIATE_SIGNING_ENABLED;
 	/* -1, because size includes one byte of the security buffer. */
 	ssreq->ssreq_security_buffer_offset = SMB2_PH_STRUCTURE_SIZE + SMB2_SSREQ_STRUCTURE_SIZE - 1;
+
+	smb2_gss_send(p->p_conn, &buf, &len);
+	memcpy(p->p_buf + p->p_buf_len, buf, len);
+	p->p_buf_len += len;
 
 	return (ssreq);
 }

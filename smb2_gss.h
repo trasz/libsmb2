@@ -32,5 +32,6 @@
 struct smb2_connection;
 
 void	smb2_gss_receive(struct smb2_connection *conn, void *buf, size_t length);
+void	smb2_gss_send(struct smb2_connection *conn, void **buf, size_t *length);
 
 #endif /* !SMB2_GSS_H */

@@ -34,6 +34,7 @@
 #include "smb2_connection.h"
 #include "smb2_gss.h"
 
+#if 0
 static void
 smb2_gss_err(const char *message, OM_uint32 maj_status_arg, OM_uint32 min_status_arg)
 {
@@ -75,10 +76,12 @@ smb2_gss_get_service_name(gss_name_t *service_name)
 	if (maj_status != GSS_S_COMPLETE)
 		smb2_gss_err("smb2_gss_get_service_name", maj_status, min_status);
 }
+#endif
 
 void
 smb2_gss_receive(struct smb2_connection *conn, void *buf, size_t length)
 {
+#if 0
 	OM_uint32 maj_status, min_status;
 	gss_buffer_desc inbuf;
 	gss_ctx_id_t ctx = GSS_C_NO_CONTEXT;
@@ -94,5 +97,18 @@ smb2_gss_receive(struct smb2_connection *conn, void *buf, size_t length)
 
 	if (maj_status != GSS_S_COMPLETE && maj_status != GSS_S_CONTINUE_NEEDED)
 		smb2_gss_err("smb2_gss_receive", maj_status, min_status);
+#else
+	conn->c_token.length = length;
+	conn->c_token.value = malloc(length);
+	memcpy(conn->c_token.value, buf, length);
+#endif
+}
+
+void
+smb2_gss_send(struct smb2_connection *conn, void **buf, size_t *length)
+{
+
+	*buf = conn->c_token.value;
+	*length = conn->c_token.length;
 }
 
