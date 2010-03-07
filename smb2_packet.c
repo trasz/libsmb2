@@ -90,11 +90,12 @@ smb2_packet_add_ssreq(struct smb2_packet *p)
 	
 	ssreq->ssreq_structure_size = SMB2_SSREQ_STRUCTURE_SIZE;
 	ssreq->ssreq_security_mode = SMB2_SSREQ_NEGOTIATE_SIGNING_ENABLED;
-	/* -1, because size includes one byte of the security buffer. */
-	ssreq->ssreq_security_buffer_offset = SMB2_PH_STRUCTURE_SIZE + SMB2_SSREQ_STRUCTURE_SIZE - 1;
 
 	smb2_gss_send(p->p_conn, &buf, &len);
-	memcpy(p->p_buf + p->p_buf_len, buf, len);
+	/* -1, because size includes one byte of the security buffer. */
+	ssreq->ssreq_security_buffer_offset = SMB2_PH_STRUCTURE_SIZE + SMB2_SSREQ_STRUCTURE_SIZE - 1;
+	memcpy(p->p_buf + ssreq->ssreq_security_buffer_offset, buf, len);
+	ssreq->ssreq_security_buffer_length = len;
 	p->p_buf_len += len;
 
 	return (ssreq);
