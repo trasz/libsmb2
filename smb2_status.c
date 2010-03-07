@@ -26,7 +26,6 @@
  * $Id: smb2_status.h,v 1.1 2010/03/05 14:59:21 trasz Exp $
  */
 
-#include <arpa/inet.h>
 #include <stdio.h>
 #include <string.h>
 
