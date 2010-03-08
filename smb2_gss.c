@@ -33,74 +33,14 @@
 
 #include "smb2_connection.h"
 #include "smb2_gss.h"
-#include "spnego/spnego.h"
-
-static void
-smb2_gss_err(const char *message, OM_uint32 maj_status_arg, OM_uint32 min_status_arg)
-{
-	OM_uint32 maj_status, min_status, more_msgs = 0;
-	gss_buffer_desc msg;
-
-	do {
-		maj_status = gss_display_status(&min_status, maj_status_arg, GSS_C_GSS_CODE, GSS_C_NULL_OID, &more_msgs, &msg);
-		if (maj_status != GSS_S_COMPLETE)
-			errx(1, "smb2_gss_err: gss_display_status failed");
-
-		warnx("%s: major status: %s", message, (char *)msg.value);
-		gss_release_buffer(&min_status, &msg);
-	} while (more_msgs != 0);
-
-	do {
-		maj_status = gss_display_status(&min_status, min_status_arg, GSS_C_MECH_CODE, GSS_C_NULL_OID, &more_msgs, &msg);
-		if (maj_status != GSS_S_COMPLETE)
-			errx(1, "smb2_gss_err: gss_display_status failed");
-
-		warnx("%s: minor status: %s", message, (char *)msg.value);
-		gss_release_buffer(&min_status, &msg);
-	} while (more_msgs != 0);
-
-	exit(1);
-}
-
-static void
-smb2_gss_get_service_name(gss_name_t *service_name)
-{
-	OM_uint32 maj_status, min_status;
-	gss_buffer_desc service_buf;
-
-	service_buf.value = "whatever";
-	service_buf.length = strlen(service_buf.value) + 1;
-
-	maj_status = gss_import_name(&min_status, &service_buf, GSS_C_NT_HOSTBASED_SERVICE, service_name);
-	if (maj_status != GSS_S_COMPLETE)
-		smb2_gss_err("smb2_gss_get_service_name", maj_status, min_status);
-}
 
 void
 smb2_gss_receive(struct smb2_connection *conn, void *buf, size_t length)
 {
-	OM_uint32 maj_status, min_status;
-	gss_buffer_desc inbuf;
-	gss_ctx_id_t ctx = GSS_C_NO_CONTEXT;
-	gss_name_t service_name;
-
-	inbuf.value = buf;
-	inbuf.length = length;
-
-	smb2_gss_get_service_name(&service_name);
-	maj_status = gss_init_sec_context_spnego(&min_status, GSS_C_NO_CREDENTIAL, &ctx, service_name,
-	    GSS_C_NO_OID, GSS_C_MUTUAL_FLAG | GSS_C_DELEG_FLAG, GSS_C_INDEFINITE,
-	    NULL, &inbuf, NULL, &conn->c_token, NULL, NULL);
-
-	if (maj_status != GSS_S_COMPLETE && maj_status != GSS_S_CONTINUE_NEEDED)
-		smb2_gss_err("smb2_gss_receive", maj_status, min_status);
 }
 
 void
 smb2_gss_send(struct smb2_connection *conn, void **buf, size_t *length)
 {
-
-	*buf = conn->c_token.value;
-	*length = conn->c_token.length;
 }
 
