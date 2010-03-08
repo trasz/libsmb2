@@ -26,12 +26,13 @@
  * $Id$
  */
 
-#ifndef SMB2_GSS_H
-#define	SMB2_GSS_H
+#ifndef SMB2_SPNEGO_H
+#define	SMB2_SPNEGO_H
 
 struct smb2_connection;
 
-void	smb2_spnego_receive(struct smb2_connection *conn, void *buf, size_t length);
-void	smb2_spnego_send(struct smb2_connection *conn, void **buf, size_t *length);
+void	smb2_spnego_take_neg_token_init_2(struct smb2_connection *conn, void *buf, size_t length);
+void	smb2_spnego_make_neg_token_init(struct smb2_connection *conn, void **buf, size_t *length);
+void	smb2_spnego_take_neg_token_resp(struct smb2_connection *conn, void **buf, size_t *length);
 
-#endif /* !SMB2_GSS_H */
+#endif /* !SMB2_SPNEGO_H */

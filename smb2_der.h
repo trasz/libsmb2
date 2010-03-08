@@ -26,40 +26,17 @@
  * $Id$
  */
 
-/*
- * What is being done here is mostly described in [MS-SPNG].
- */
+#ifndef SMB2_DER_H
+#define	SMB2_DER_H
 
-#include <err.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <stddef.h>
 
-#include "smb2_connection.h"
-#include "smb2_der.h"
-#include "smb2_spnego.h"
+struct smb2_der;
 
-void
-smb2_spnego_take_neg_token_init_2(struct smb2_connection *conn, void *buf, size_t length)
-{
-	struct smb2_der *d, *d2;
-	char *oid;
-	char id;
+struct	smb2_der	*smb2_der_new(const void *buf, size_t len);
+void			smb2_der_delete(struct smb2_der *d);
+struct smb2_der		*smb2_der_get_constructed(struct smb2_der *d, char *identifier);
+char			*smb2_der_get_oid(struct smb2_der *d);
+void			smb2_der_get_whatever(struct smb2_der *d);
 
-	d = smb2_der_new(buf, length);
-	d2 = smb2_der_get_constructed(d, &id);
-
-	oid = smb2_der_get_oid(d2);
-	if (strcmp(oid, "1.3.6.1.5.5.2") != 0)
-		errx(1, "smb2_spnego_take_neg_token_init_2: received non-SPNEGO token (OID %s)", oid);
-	free(oid);
-
-	smb2_der_get_whatever(d2);
-	smb2_der_delete(d);
-}
-
-void
-smb2_spnego_make_neg_token_init(struct smb2_connection *conn, void **buf, size_t *length)
-{
-}
-
+#endif /* !SMB2_DER_H */
