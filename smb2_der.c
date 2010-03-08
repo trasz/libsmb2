@@ -86,7 +86,7 @@ smb2_der_extract(struct smb2_der *d, char *id, size_t *len)
 
 	if (length_octet & 0x80)
 		errx(1, "smb2_der_extract: long lengths not supported yet");
-	*len = length_octet & 0xEF;
+	*len = length_octet & 0x7F;
 
 	if (d->d_next + *len > d->d_len)
 		errx(1, "smb2_der_extract: object len %d, but only %d left", *len, d->d_len - d->d_next);
@@ -101,13 +101,15 @@ smb2_der_get_constructed(struct smb2_der *d, char *identifier)
 
 	smb2_der_extract(d, &id, &len);
 
-	if (id != 0x60)
+	if ((id & 0x20) == 0)
 		errx(1, "smb2_der_get_constructed: not constructed");
 
 	c = smb2_der_new(&(d->d_buf[d->d_next]), len);
 	*identifier = id;
 
 	d->d_next += len;
+
+	fprintf(stderr, "constructed: id 0x%x, len %zd\n", id, len);
 	
 	return (c);
 }
@@ -136,11 +138,7 @@ smb2_der_get_oid(struct smb2_der *d)
 	 */
 	stroff = 0;
 	subid = 0;
-	for (;;) {
-		// XXX: +1?
-		if (d->d_next > len + 1)
-			break;
-
+	for (; len > 0; len--) {
 		subid <<= 7;
 		subid |= d->d_buf[d->d_next] & 0xEF;
 		if ((d->d_buf[d->d_next] & 0x80) == 0) {

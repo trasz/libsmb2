@@ -42,20 +42,21 @@
 void
 smb2_spnego_take_neg_token_init_2(struct smb2_connection *conn, void *buf, size_t length)
 {
-	struct smb2_der *d, *d2;
+	struct smb2_der *blob, *gss, *spnego;
 	char *oid;
 	char id;
 
-	d = smb2_der_new(buf, length);
-	d2 = smb2_der_get_constructed(d, &id);
-
-	oid = smb2_der_get_oid(d2);
+	blob = smb2_der_new(buf, length);
+	gss = smb2_der_get_constructed(blob, &id);
+	oid = smb2_der_get_oid(gss);
 	if (strcmp(oid, "1.3.6.1.5.5.2") != 0)
 		errx(1, "smb2_spnego_take_neg_token_init_2: received non-SPNEGO token (OID %s)", oid);
-	free(oid);
+	spnego = smb2_der_get_constructed(gss, &id);
 
-	smb2_der_get_whatever(d2);
-	smb2_der_delete(d);
+	free(oid);
+	smb2_der_delete(spnego);
+	smb2_der_delete(gss);
+	smb2_der_delete(blob);
 }
 
 void
