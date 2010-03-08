@@ -32,10 +32,10 @@
 #include <stdlib.h>
 
 #include "smb2_connection.h"
-#include "smb2_gss.h"
 #include "smb2_headers.h"
-#include "smb2_status.h"
 #include "smb2_packet.h"
+#include "smb2_spnego.h"
+#include "smb2_status.h"
 
 static void
 smb2_parse_nres(struct smb2_packet *p)
@@ -57,7 +57,7 @@ smb2_parse_nres(struct smb2_packet *p)
 	if (nres->nres_security_buffer_offset + nres->nres_security_buffer_length > p->p_buf_len)
 		errx(1, "smb2_parse_nres: security buffer (%d) longer than packet (%d)", nres->nres_security_buffer_length, p->p_buf_len);
 
-	smb2_gss_receive(p->p_conn, p->p_buf + nres->nres_security_buffer_offset, nres->nres_security_buffer_length);
+	smb2_spnego_receive(p->p_conn, p->p_buf + nres->nres_security_buffer_offset, nres->nres_security_buffer_length);
 }
 
 static void

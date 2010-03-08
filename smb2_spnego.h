@@ -26,21 +26,12 @@
  * $Id$
  */
 
-#include <err.h>
-#include <stdlib.h>
-#include <string.h>
-#include <gssapi/gssapi.h>
+#ifndef SMB2_GSS_H
+#define	SMB2_GSS_H
 
-#include "smb2_connection.h"
-#include "smb2_gss.h"
+struct smb2_connection;
 
-void
-smb2_gss_receive(struct smb2_connection *conn, void *buf, size_t length)
-{
-}
+void	smb2_spnego_receive(struct smb2_connection *conn, void *buf, size_t length);
+void	smb2_spnego_send(struct smb2_connection *conn, void **buf, size_t *length);
 
-void
-smb2_gss_send(struct smb2_connection *conn, void **buf, size_t *length)
-{
-}
-
+#endif /* !SMB2_GSS_H */
