@@ -125,8 +125,6 @@
  * but this will keep it from generating errors until that's written.
  */
 
-#ifdef GSSAPI
-
 /*
  * XXXSRA Some of the following files are almost certainly unnecessary,
  * but using this list (borrowed from gssapictx.c) gets rid of some
@@ -134,35 +132,11 @@
  * harmless in any case.
  */
 
-#include <config.h>
-
 #include <stdlib.h>
 #include <errno.h>
+#include <string.h>
 
-#include <isc/buffer.h>
-#include <isc/dir.h>
-#include <isc/entropy.h>
-#include <isc/lex.h>
-#include <isc/mem.h>
-#include <isc/once.h>
-#include <isc/random.h>
-#include <isc/string.h>
-#include <isc/time.h>
-#include <isc/util.h>
-
-#include <dns/fixedname.h>
-#include <dns/name.h>
-#include <dns/rdata.h>
-#include <dns/rdataclass.h>
-#include <dns/result.h>
-#include <dns/types.h>
-#include <dns/keyvalues.h>
-#include <dns/log.h>
-
-#include <dst/gssapi.h>
-#include <dst/result.h>
-
-#include "dst_internal.h"
+#include <gssapi/gssapi.h>
 
 /*
  * The API we export
@@ -1784,5 +1758,3 @@ gss_init_sec_context_spnego(OM_uint32 *minor_status,
 				     ret_flags,
 				     time_rec));
 }
-
-#endif /* GSSAPI */

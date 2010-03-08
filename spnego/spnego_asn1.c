@@ -27,6 +27,8 @@
 #ifndef __asn1_h__
 #define __asn1_h__
 
+#include <sys/types.h>
+
 
 #ifndef __asn1_common_definitions__
 #define __asn1_common_definitions__

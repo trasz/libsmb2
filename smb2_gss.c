@@ -33,6 +33,7 @@
 
 #include "smb2_connection.h"
 #include "smb2_gss.h"
+#include "spnego/spnego.h"
 
 static void
 smb2_gss_err(const char *message, OM_uint32 maj_status_arg, OM_uint32 min_status_arg)
@@ -87,7 +88,7 @@ smb2_gss_receive(struct smb2_connection *conn, void *buf, size_t length)
 	inbuf.length = length;
 
 	smb2_gss_get_service_name(&service_name);
-	maj_status = gss_init_sec_context(&min_status, GSS_C_NO_CREDENTIAL, &ctx, service_name,
+	maj_status = gss_init_sec_context_spnego(&min_status, GSS_C_NO_CREDENTIAL, &ctx, service_name,
 	    GSS_C_NO_OID, GSS_C_MUTUAL_FLAG | GSS_C_DELEG_FLAG, GSS_C_INDEFINITE,
 	    NULL, &inbuf, NULL, &conn->c_token, NULL, NULL);
 
