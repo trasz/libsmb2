@@ -82,7 +82,7 @@ smb2_parse_packet_header(struct smb2_packet *p)
 	ph = (struct smb2_packet_header_sync *)p->p_buf;
 
 	if (ph->ph_protocol_id != SMB2_PH_PROTOCOL_ID)
-		errx(1, "smb2_parse_packet_header: invalid protocol id (0x%x)", ph->ph_protocol_id);
+		errx(1, "smb2_parse_packet_header: invalid protocol id (0x%X)", ph->ph_protocol_id);
 	if (ph->ph_structure_size != SMB2_PH_STRUCTURE_SIZE)
 		errx(1, "smb2_parse_packet_header: invalid structure size (%d)", ph->ph_structure_size);
 

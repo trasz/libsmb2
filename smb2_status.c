@@ -60,7 +60,7 @@ smb2_strstatus(int32_t status)
 	if (SMB2_STATUS_N(status))
 		strcat(str, ", N not zero");
 
-	sprintf(str + strlen(str), ", facility 0x%x, code 0x%x", SMB2_STATUS_FACILITY(status), SMB2_STATUS_CODE(status));
+	sprintf(str + strlen(str), ", facility 0x%X, code 0x%X", SMB2_STATUS_FACILITY(status), SMB2_STATUS_CODE(status));
 
 	return (str);
 }

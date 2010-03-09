@@ -35,8 +35,14 @@ struct smb2_der;
 
 struct	smb2_der	*smb2_der_new(const void *buf, size_t len);
 void			smb2_der_delete(struct smb2_der *d);
-struct smb2_der		*smb2_der_get_constructed(struct smb2_der *d, char *identifier);
+
+void			smb2_der_rewind(struct smb2_der *d);
+void			smb2_der_print(struct smb2_der *d, int indent);
+
+struct smb2_der		*smb2_der_get_constructed(struct smb2_der *d, unsigned char *identifier);
+struct smb2_der		*smb2_der_get_sequence(struct smb2_der *d);
 char			*smb2_der_get_oid(struct smb2_der *d);
-void			smb2_der_get_whatever(struct smb2_der *d);
+char			*smb2_der_get_general_string(struct smb2_der *d);
+int			smb2_der_get_whatever(struct smb2_der *d, unsigned char *id, size_t *len, void **buf);
 
 #endif /* !SMB2_DER_H */
