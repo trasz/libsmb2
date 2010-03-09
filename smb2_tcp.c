@@ -64,5 +64,3 @@ smb2_tcp_receive(struct smb2_packet *p)
 		errx(1, "smb2_tcp_receive: read failed 2");
 	p->p_buf_len = encapsulation;
 }
-
-

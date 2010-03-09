@@ -37,8 +37,8 @@
 #include "smb2_packet.h"
 #include "smb2_spnego.h"
 
-static void
-smb2_packet_fill_header_sync(struct smb2_packet *p, int cmd)
+struct smb2_packet_header_sync *
+smb2_packet_add_header_sync(struct smb2_packet *p)
 {
 	struct smb2_packet_header_sync *ph;
 
@@ -50,55 +50,35 @@ smb2_packet_fill_header_sync(struct smb2_packet *p, int cmd)
 	ph->ph_protocol_id = SMB2_PH_PROTOCOL_ID;
 	ph->ph_structure_size = SMB2_PH_STRUCTURE_SIZE;
 	ph->ph_status = SMB2_STATUS_SUCCESS;
-	ph->ph_command = cmd;
 	ph->ph_credit_request_response = 126;
 	ph->ph_message_id = smb2_connection_next_message_id(p->p_conn);
 	ph->ph_process_id = SMB2_PH_PROCESS_ID_NONE;
+
+	return (ph);
 }
 
-static struct smb2_negotiate_request *
-smb2_packet_add_nreq(struct smb2_packet *p)
+struct smb2_packet_header_sync *
+smb2_packet_parse_header(struct smb2_packet *p)
 {
-	struct smb2_negotiate_request *nreq;
+	struct smb2_packet_header_sync *ph;
 
-	smb2_packet_fill_header_sync(p, SMB2_NEGOTIATE);
+	if (p->p_buf_len < SMB2_PH_STRUCTURE_SIZE)
+		errx(1, "smb2_parse_packet_header: received packet too small (%d)", p->p_buf_len);
 
-	nreq = (struct smb2_negotiate_request *)(p->p_buf + p->p_buf_len);
-	p->p_buf_len += sizeof(*nreq);
-	
-	nreq->nreq_structure_size = SMB2_NREQ_STRUCTURE_SIZE;
-	nreq->nreq_dialect_count = 1;
-	nreq->nreq_security_mode = SMB2_NREQ_NEGOTIATE_SIGNING_ENABLED;
-	p->p_buf_len += sizeof(nreq->nreq_dialects[0]);
-	nreq->nreq_dialects[0] = 0x0202;
+	ph = (struct smb2_packet_header_sync *)p->p_buf;
 
-	return (nreq);
-}
+	if (ph->ph_protocol_id != SMB2_PH_PROTOCOL_ID)
+		errx(1, "smb2_parse_packet_header: invalid protocol id (0x%X)", ph->ph_protocol_id);
+	if (ph->ph_structure_size != SMB2_PH_STRUCTURE_SIZE)
+		errx(1, "smb2_parse_packet_header: invalid structure size (%d)", ph->ph_structure_size);
 
-static struct smb2_session_setup_request *
-smb2_packet_add_ssreq(struct smb2_packet *p)
-{
-	struct smb2_session_setup_request *ssreq;
-	void *buf;
-	size_t len;
+	smb2_connection_add_credits(p->p_conn, ph->ph_credit_request_response);
+	//printf("credits granted: %d\n", ph->ph_credit_request_response);
 
-	smb2_packet_fill_header_sync(p, SMB2_SESSION_SETUP);
+	if (ph->ph_status != SMB2_STATUS_SUCCESS)
+		errx(1, "smb2_parse_packet_header: status not success (%s)", smb2_strstatus(ph->ph_status));
 
-	ssreq = (struct smb2_session_setup_request *)(p->p_buf + p->p_buf_len);
-	/* -1, because size includes one byte of the security buffer. */
-	p->p_buf_len += sizeof(*ssreq) - 1;
-	
-	ssreq->ssreq_structure_size = SMB2_SSREQ_STRUCTURE_SIZE;
-	ssreq->ssreq_security_mode = SMB2_SSREQ_NEGOTIATE_SIGNING_ENABLED;
-
-	smb2_spnego_make_neg_token_init(p->p_conn, &buf, &len);
-	/* -1, because size includes one byte of the security buffer. */
-	ssreq->ssreq_security_buffer_offset = SMB2_PH_STRUCTURE_SIZE + SMB2_SSREQ_STRUCTURE_SIZE - 1;
-	memcpy(p->p_buf + ssreq->ssreq_security_buffer_offset, buf, len);
-	ssreq->ssreq_security_buffer_length = len;
-	p->p_buf_len += len;
-
-	return (ssreq);
+	return (ph);
 }
 
 struct smb2_packet *
@@ -122,18 +102,3 @@ smb2_packet_delete(struct smb2_packet *p)
 	free(p);
 }
 
-void
-smb2_packet_add_command(struct smb2_packet *p, int cmd)
-{
-
-	switch (cmd) {
-	case SMB2_NEGOTIATE:
-		smb2_packet_add_nreq(p);
-		break;
-	case SMB2_SESSION_SETUP:
-		smb2_packet_add_ssreq(p);
-		break;
-	default:
-		errx(1, "smb2_packet_add_command: unknown command %d", cmd);
-	}
-}

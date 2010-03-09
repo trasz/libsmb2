@@ -27,7 +27,15 @@
  */
 
 /*
- * What is being done here is mostly described in [MS-SPNG].
+ * What is being done here is mostly described in [MS-SPNG].  We're not using
+ * mechanisms provided by the operating system (GSSAPI, as in <gssapi/gssapi.h>,
+ * because:
+ *
+ * 1. MacOS X doesn't seem to support SPNEGO,
+ * 2. GSSAPI is horrible and complicated to use, and
+ * 3. There are bugs in the Microsoft implementation, making it not quite standard-compliant.
+ *
+ * This version supports only NTLM mechanism.
  */
 
 #include <err.h>
@@ -112,5 +120,33 @@ smb2_spnego_take_neg_token_init_2(struct smb2_connection *conn, void *buf, size_
 void
 smb2_spnego_make_neg_token_init(struct smb2_connection *conn, void **buf, size_t *length)
 {
+
+	*buf = "TOKEN_INIT";
+	*length = strlen(*buf);
 }
 
+void
+smb2_spnego_take_neg_token_resp(struct smb2_connection *conn, void *buf, size_t length)
+{
+}
+
+void
+smb2_spnego_make_neg_token_init_2(struct smb2_connection *conn, void **buf, size_t *length)
+{
+
+	*buf = "TOKEN_INIT_2";
+	*length = strlen(*buf);
+}
+
+void
+smb2_spnego_take_neg_token_init(struct smb2_connection *conn, void *buf, size_t length)
+{
+}
+
+void
+smb2_spnego_make_neg_token_resp(struct smb2_connection *conn, void **buf, size_t *length)
+{
+
+	*buf = "TOKEN_RESP";
+	*length = strlen(*buf);
+}

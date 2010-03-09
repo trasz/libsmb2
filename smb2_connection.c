@@ -27,6 +27,8 @@
  */
 
 #include <err.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 #include "smb2_connection.h"
 
@@ -49,3 +51,14 @@ smb2_connection_next_message_id(struct smb2_connection *conn)
 
 	return (msgid);
 }
+
+void
+smb2_disconnect(struct smb2_connection *conn)
+{
+
+	// XXX: Ignored return value.
+	close(conn->c_fd);
+	free(conn);
+}
+
+

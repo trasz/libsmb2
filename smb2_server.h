@@ -26,21 +26,11 @@
  * $Id$
  */
 
-#ifndef SMB2_CONNECTION_H
-#define	SMB2_CONNECTION_H
+#ifndef SMB2_SERVER_H
+#define	SMB2_SERVER_H
 
-#include <stdint.h>
-#include <gssapi/gssapi.h>
+struct smb2_connection;
 
-struct smb2_connection {
-	int		c_fd;
-	int64_t		c_credits_first;
-	int64_t		c_credits_after_last;
-	gss_buffer_desc	c_token;
-};
+struct smb2_connection		*smb2_accept();
 
-void				smb2_connection_add_credits(struct smb2_connection *conn, int64_t credits);
-int64_t				smb2_connection_next_message_id(struct smb2_connection *conn);
-void				smb2_disconnect(struct smb2_connection *conn);
-
-#endif /* !SMB2_CONNECTION_H */
+#endif /* !SMB2_SERVER_H */

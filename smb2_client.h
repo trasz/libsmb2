@@ -26,8 +26,11 @@
  * $Id$
  */
 
+#ifndef SMB2_CLIENT_H
+#define	SMB2_CLIENT_H
+
 struct smb2_connection;
 
 struct smb2_connection		*smb2_connect(const char *address);
-void				smb2_disconnect(struct smb2_connection *conn);
 
+#endif /* !SMB2_CLIENT_H */

@@ -42,7 +42,7 @@ struct smb2_packet {
 
 struct smb2_packet		*smb2_packet_new(struct smb2_connection *conn);
 void				smb2_packet_delete(struct smb2_packet *p);
-void				smb2_packet_add_command(struct smb2_packet *p, int cmd);
-void				smb2_parse(struct smb2_packet *p);
+struct smb2_packet_header_sync	*smb2_packet_add_header_sync(struct smb2_packet *p);
+struct smb2_packet_header_sync	*smb2_packet_parse_header(struct smb2_packet *p);
 
 #endif /* !SMB2_PACKET_H */

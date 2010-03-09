@@ -87,6 +87,9 @@ static int
 smb2_der_get_next_id(struct smb2_der *d, unsigned char *id)
 {
 
+	if (d == NULL)
+		return (-1);
+
 	if (d->d_next == d->d_len) {
 		//warnx("smb2_der_get_next_id: no more data");
 		return (-1);
@@ -98,6 +101,32 @@ smb2_der_get_next_id(struct smb2_der *d, unsigned char *id)
 	}
 
 	*id = d->d_buf[d->d_next];
+
+	return (0);
+}
+
+static int
+smb2_der_extract(struct smb2_der *d, unsigned char *id, size_t *len)
+{
+	char length_octet;
+
+	if (smb2_der_get_next_id(d, id))
+		return (-1);
+
+	*id = d->d_buf[d->d_next];
+	length_octet = d->d_buf[d->d_next + 1];
+	d->d_next += 2;
+
+	if (length_octet & 0x80) {
+		warnx("smb2_der_extract: long lengths not supported yet");
+		return (-1);
+	}
+	*len = length_octet & 0x7F;
+
+	if (d->d_next + *len > d->d_len) {
+		warnx("smb2_der_extract: object len %d, but only %d left", *len, d->d_len - d->d_next);
+		return (-1);
+	}
 
 	return (0);
 }
@@ -138,42 +167,6 @@ smb2_der_print(struct smb2_der *d, int indent)
 	}
 }
 
-static int
-smb2_der_extract(struct smb2_der *d, unsigned char *id, size_t *len)
-{
-	char length_octet;
-
-	if (d == NULL)
-		return (-1);
-
-	if (d->d_next == d->d_len) {
-		warnx("smb2_der_extract: no more data");
-		return (-1);
-	}
-
-	if (d->d_next + 2 > d->d_len) {
-		warnx("smb2_der_extract: truncated");
-		return (-1);
-	}
-
-	*id = d->d_buf[d->d_next];
-	length_octet = d->d_buf[d->d_next + 1];
-	d->d_next += 2;
-
-	if (length_octet & 0x80) {
-		warnx("smb2_der_extract: long lengths not supported yet");
-		return (-1);
-	}
-	*len = length_octet & 0x7F;
-
-	if (d->d_next + *len > d->d_len) {
-		warnx("smb2_der_extract: object len %d, but only %d left", *len, d->d_len - d->d_next);
-		return (-1);
-	}
-
-	return (0);
-}
-
 struct smb2_der *
 smb2_der_get_constructed(struct smb2_der *d, unsigned char *identifier)
 {
@@ -181,13 +174,15 @@ smb2_der_get_constructed(struct smb2_der *d, unsigned char *identifier)
 	size_t len;
 	unsigned char id;
 
-	if (smb2_der_extract(d, &id, &len))
+	if (smb2_der_get_next_id(d, &id))
 		return (NULL);
-
 	if ((id & 0x20) == 0) {
 		warnx("smb2_der_get_constructed: not constructed");
 		return (NULL);
 	}
+
+	if (smb2_der_extract(d, &id, &len))
+		return (NULL);
 
 	c = smb2_der_new(&(d->d_buf[d->d_next]), len);
 	*identifier = id;
@@ -203,14 +198,16 @@ smb2_der_get_sequence(struct smb2_der *d)
 	struct smb2_der *c;
 	unsigned char id;
 
-	c = smb2_der_get_constructed(d, &id);
-	if (c == NULL)
+	if (smb2_der_get_next_id(d, &id))
 		return (NULL);
 	if (id != 0x30) {
 		warnx("smb2_der_get_sequence: not a sequence (id 0x%X)", id & 0xFF);
 		return (NULL);
 	}
 
+	c = smb2_der_get_constructed(d, &id);
+	if (c == NULL)
+		return (NULL);
 	return (c);
 }
 
@@ -222,13 +219,15 @@ smb2_der_get_oid(struct smb2_der *d)
 	unsigned char id;
 	int subid;
 
-	if (smb2_der_extract(d, &id, &len))
+	if (smb2_der_get_next_id(d, &id))
 		return (NULL);
-
 	if (id != 0x06) {
 		warnx("smb2_der_get_oid: not an oid (code 0x%X, not 0x06)", id & 0xFF);
 		return (NULL);
 	}
+
+	if (smb2_der_extract(d, &id, &len))
+		return (NULL);
 
 	str = malloc(SMB2_DER_OID_LEN + 1);
 	if (str == NULL)
@@ -271,13 +270,15 @@ smb2_der_get_general_string(struct smb2_der *d)
 	size_t len;
 	unsigned char id;
 
-	if (smb2_der_extract(d, &id, &len))
+	if (smb2_der_get_next_id(d, &id))
 		return (NULL);
-
 	if (id != 0x1B) {
 		warnx("smb2_der_get_oid: not a general string (code 0x%X, not 0x1B)", id & 0xFF);
 		return (NULL);
 	}
+
+	if (smb2_der_extract(d, &id, &len))
+		return (NULL);
 
 	str = malloc(len + 1);
 	if (str == NULL)

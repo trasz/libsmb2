@@ -42,107 +42,108 @@
 #include "smb2_spnego.h"
 #include "smb2_tcp.h"
 
-static struct smb2_negotiate_request *
-smb2_packet_add_nreq(struct smb2_packet *p)
+static struct smb2_negotiate_response *
+smb2_packet_add_nres(struct smb2_packet *p)
 {
 	struct smb2_packet_header_sync *ph;
-	struct smb2_negotiate_request *nreq;
+	struct smb2_negotiate_response *nres;
+	void *buf;
+	size_t len;
 
 	ph = smb2_packet_add_header_sync(p);
 	ph->ph_command = SMB2_NEGOTIATE;
+	ph->ph_flags |= SMB2_FLAGS_SERVER_TO_REDIR;
 
-	nreq = (struct smb2_negotiate_request *)(p->p_buf + p->p_buf_len);
-	p->p_buf_len += sizeof(*nreq);
+	nres = (struct smb2_negotiate_response *)(p->p_buf + p->p_buf_len);
+	/* -1, because size includes one byte of the security buffer. */
+	p->p_buf_len += sizeof(*nres) - 1;
 	
-	nreq->nreq_structure_size = SMB2_NREQ_STRUCTURE_SIZE;
-	nreq->nreq_dialect_count = 1;
-	nreq->nreq_security_mode = SMB2_NREQ_NEGOTIATE_SIGNING_ENABLED;
-	p->p_buf_len += sizeof(nreq->nreq_dialects[0]);
-	nreq->nreq_dialects[0] = 0x0202;
+	nres->nres_structure_size = SMB2_NRES_STRUCTURE_SIZE;
+	nres->nres_security_mode = SMB2_NRES_NEGOTIATE_SIGNING_ENABLED;
+	nres->nres_dialect_revision = 0x0202;
+	nres->nres_max_transact_size = 65535;
+	nres->nres_max_read_size = 65535;
+	nres->nres_max_write_size = 65535;
 
-	return (nreq);
+	smb2_spnego_make_neg_token_init_2(p->p_conn, &buf, &len);
+	/* -1, because size includes one byte of the security buffer. */
+	nres->nres_security_buffer_offset = SMB2_PH_STRUCTURE_SIZE + SMB2_NRES_STRUCTURE_SIZE - 1;
+	memcpy(p->p_buf + nres->nres_security_buffer_offset, buf, len);
+	nres->nres_security_buffer_length = len;
+	p->p_buf_len += len;
+
+	return (nres);
 }
 
-static struct smb2_session_setup_request *
-smb2_packet_add_ssreq(struct smb2_packet *p)
+static struct smb2_session_setup_response *
+smb2_packet_add_ssres(struct smb2_packet *p)
 {
 	struct smb2_packet_header_sync *ph;
-	struct smb2_session_setup_request *ssreq;
+	struct smb2_session_setup_response *ssres;
 	void *buf;
 	size_t len;
 
 	ph = smb2_packet_add_header_sync(p);
 	ph->ph_command = SMB2_SESSION_SETUP;
+	ph->ph_flags |= SMB2_FLAGS_SERVER_TO_REDIR;
 
-	ssreq = (struct smb2_session_setup_request *)(p->p_buf + p->p_buf_len);
+	ssres = (struct smb2_session_setup_response *)(p->p_buf + p->p_buf_len);
 	/* -1, because size includes one byte of the security buffer. */
-	p->p_buf_len += sizeof(*ssreq) - 1;
+	p->p_buf_len += sizeof(*ssres) - 1;
 	
-	ssreq->ssreq_structure_size = SMB2_SSREQ_STRUCTURE_SIZE;
-	ssreq->ssreq_security_mode = SMB2_SSREQ_NEGOTIATE_SIGNING_ENABLED;
+	ssres->ssres_structure_size = SMB2_SSREQ_STRUCTURE_SIZE;
+	ssres->ssres_session_flags = SMB2_SSRES_SESSION_FLAG_IS_NULL;
 
-	smb2_spnego_make_neg_token_init(p->p_conn, &buf, &len);
+	smb2_spnego_make_neg_token_resp(p->p_conn, &buf, &len);
 	/* -1, because size includes one byte of the security buffer. */
-	ssreq->ssreq_security_buffer_offset = SMB2_PH_STRUCTURE_SIZE + SMB2_SSREQ_STRUCTURE_SIZE - 1;
-	memcpy(p->p_buf + ssreq->ssreq_security_buffer_offset, buf, len);
-	ssreq->ssreq_security_buffer_length = len;
+	ssres->ssres_security_buffer_offset = SMB2_PH_STRUCTURE_SIZE + SMB2_SSRES_STRUCTURE_SIZE - 1;
+	memcpy(p->p_buf + ssres->ssres_security_buffer_offset, buf, len);
+	ssres->ssres_security_buffer_length = len;
 	p->p_buf_len += len;
 
-	return (ssreq);
+	return (ssres);
 }
 
 static void
-smb2_client_add_command(struct smb2_packet *p, int cmd)
+smb2_server_add_command(struct smb2_packet *p, int cmd)
 {
 
 	switch (cmd) {
 	case SMB2_NEGOTIATE:
-		smb2_packet_add_nreq(p);
+		smb2_packet_add_nres(p);
 		break;
 	case SMB2_SESSION_SETUP:
-		smb2_packet_add_ssreq(p);
+		smb2_packet_add_ssres(p);
 		break;
 	default:
-		errx(1, "smb2_client_add_command: unknown command %d", cmd);
+		errx(1, "smb2_packet_add_command: unknown command %d", cmd);
 	}
 }
 
 static void
-smb2_parse_nres(struct smb2_packet *p)
+smb2_parse_nreq(struct smb2_packet *p)
 {
-	struct smb2_negotiate_response *nres;
+	struct smb2_negotiate_request *nreq;
 
-	if (p->p_buf_len < SMB2_PH_STRUCTURE_SIZE + SMB2_NRES_STRUCTURE_SIZE)
-		errx(1, "smb2_parse_nres: received packet too small (%d)", p->p_buf_len);
+	if (p->p_buf_len < SMB2_PH_STRUCTURE_SIZE + SMB2_NREQ_STRUCTURE_SIZE)
+		errx(1, "smb2_parse_nreq: received packet too small (%d)", p->p_buf_len);
 
-	nres = (struct smb2_negotiate_response *)(p->p_buf + SMB2_PH_STRUCTURE_SIZE);
-
-	/*
-	 * -1, because SMB2_NRES_STRUCTURE_SIZE includes one byte of the buffer.
-	 */
-	if (nres->nres_security_buffer_offset != SMB2_PH_STRUCTURE_SIZE + SMB2_NRES_STRUCTURE_SIZE - 1)
-		errx(1, "smb2_parse_nres: weird security buffer offset, is %d, should be %d",
-		    nres->nres_security_buffer_offset, SMB2_PH_STRUCTURE_SIZE + SMB2_NRES_STRUCTURE_SIZE);
-
-	if (nres->nres_security_buffer_offset + nres->nres_security_buffer_length > p->p_buf_len)
-		errx(1, "smb2_parse_nres: security buffer (%d) longer than packet (%d)", nres->nres_security_buffer_length, p->p_buf_len);
-
-	smb2_spnego_take_neg_token_init_2(p->p_conn, p->p_buf + nres->nres_security_buffer_offset, nres->nres_security_buffer_length);
+	nreq = (struct smb2_negotiate_request *)(p->p_buf + SMB2_PH_STRUCTURE_SIZE);
 }
 
 static void
-smb2_parse_ssres(struct smb2_packet *p)
+smb2_parse_ssreq(struct smb2_packet *p)
 {
-	struct smb2_session_setup_response *ssres;
+	struct smb2_session_setup_request *ssreq;
 
-	if (p->p_buf_len < SMB2_PH_STRUCTURE_SIZE + SMB2_SSRES_STRUCTURE_SIZE)
-		errx(1, "smb2_parse_ssres: received packet too small (%d)", p->p_buf_len);
+	if (p->p_buf_len < SMB2_PH_STRUCTURE_SIZE + SMB2_SSREQ_STRUCTURE_SIZE)
+		errx(1, "smb2_parse_ssreq: received packet too small (%d)", p->p_buf_len);
 
-	ssres = (struct smb2_session_setup_response *)(p->p_buf + SMB2_PH_STRUCTURE_SIZE);
+	ssreq = (struct smb2_session_setup_request *)(p->p_buf + SMB2_PH_STRUCTURE_SIZE);
 }
 
 static void
-smb2_client_parse(struct smb2_packet *p)
+smb2_server_parse(struct smb2_packet *p)
 {
 	struct smb2_packet_header_sync *ph;
 
@@ -150,10 +151,10 @@ smb2_client_parse(struct smb2_packet *p)
 
 	switch (ph->ph_command) {
 		case SMB2_NEGOTIATE:
-			smb2_parse_nres(p);
+			smb2_parse_nreq(p);
 			break;
 		case SMB2_SESSION_SETUP:
-			smb2_parse_ssres(p);
+			smb2_parse_ssreq(p);
 			break;
 		default:
 			errx(1, "smb2_parse_packet_header: unknown command %d", ph->ph_command);
@@ -161,43 +162,42 @@ smb2_client_parse(struct smb2_packet *p)
 }
 
 static int
-smb2_client_negotiate(struct smb2_connection *conn)
+smb2_server_negotiate(struct smb2_connection *conn)
 {
 	struct smb2_packet *p;
 
 	fprintf(stderr, "NEGOTIATE REQUEST...\n");
 	p = smb2_packet_new(conn);
-	smb2_client_add_command(p, SMB2_NEGOTIATE);
-	smb2_tcp_send(p);
+	smb2_tcp_receive(p);
+	smb2_server_parse(p);
 	smb2_packet_delete(p);
 
 	fprintf(stderr, "NEGOTIATE RESPONSE...\n");
 	p = smb2_packet_new(conn);
-	smb2_tcp_receive(p);
-	smb2_client_parse(p);
+	smb2_server_add_command(p, SMB2_NEGOTIATE);
+	smb2_tcp_send(p);
 	smb2_packet_delete(p);
 
 	fprintf(stderr, "SESSION SETUP REQUEST...\n");
 	p = smb2_packet_new(conn);
-	smb2_client_add_command(p, SMB2_SESSION_SETUP);
-	smb2_tcp_send(p);
+	smb2_tcp_receive(p);
+	smb2_server_parse(p);
 	smb2_packet_delete(p);
 
 	fprintf(stderr, "SESSION SETUP RESPONSE...\n");
 	p = smb2_packet_new(conn);
-	smb2_tcp_receive(p);
-	smb2_client_parse(p);
+	smb2_server_add_command(p, SMB2_SESSION_SETUP);
+	smb2_tcp_send(p);
 	smb2_packet_delete(p);
 
 	return (0);
 }
 
 struct smb2_connection *
-smb2_connect(const char *address)
+smb2_accept(void)
 {
-	int error;
+	int error, fd;
 	struct sockaddr_in sin;
-	struct hostent *he;
 	struct smb2_connection *conn;
 
 	conn = calloc(1, sizeof(*conn));
@@ -207,26 +207,28 @@ smb2_connect(const char *address)
 	conn->c_credits_first = 0;
 	conn->c_credits_after_last = 1;
 
-	conn->c_fd = socket(PF_INET, SOCK_STREAM, 0);
-	if (conn->c_fd < 0)
+	fd = socket(PF_INET, SOCK_STREAM, 0);
+	if (fd < 0)
 		err(1, "socket");
 
 	memset(&sin, 0, sizeof(sin));
 	sin.sin_family = PF_INET;
 	sin.sin_port = htons(SMB2_TCP_PORT);
-	sin.sin_addr.s_addr = inet_addr(address);
-	if (sin.sin_addr.s_addr == INADDR_NONE) {
-		he = gethostbyname(address);
-		if (he == NULL)
-			errx(1, "gethostbyname: %s", hstrerror(h_errno));
-		sin.sin_addr.s_addr = ((struct in_addr *)(void *)he->h_addr)->s_addr;
-	}
+	sin.sin_addr.s_addr = INADDR_ANY;
 
-	error = connect(conn->c_fd, (struct sockaddr *)&sin, sizeof(sin));
+	error = bind(fd, (struct sockaddr *)&sin, sizeof(sin));
 	if (error)
 		err(1, "connect");
 
-	error = smb2_client_negotiate(conn);
+	error = listen(fd, 1);
+	if (error)
+		err(1, "listen");
+
+	conn->c_fd = accept(fd, NULL, 0);
+	if (conn->c_fd < 0)
+		err(1, "accept");
+
+	error = smb2_server_negotiate(conn);
 	if (error)
 		errx(1, "smb2_negotiate");
 
@@ -236,7 +238,7 @@ smb2_connect(const char *address)
 static void
 usage(void)
 {
-	fprintf(stderr, "usage: smb2 hostname\n");
+	fprintf(stderr, "usage: smb2d\n");
 	exit(-1);
 }
 
@@ -245,10 +247,10 @@ main(int argc, char **argv)
 {
 	struct smb2_connection *conn;
 
-	if (argc != 2)
+	if (argc != 1)
 		usage();
 
-	conn = smb2_connect(argv[1]);
+	conn = smb2_accept();
 	smb2_disconnect(conn);
 
 	return (0);
