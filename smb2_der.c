@@ -271,7 +271,7 @@ smb2_der_get_oid(struct smb2_der *d)
 	if (smb2_der_extract(d, &id, &len))
 		return (NULL);
 
-	str = malloc(SMB2_DER_OID_LEN + 1);
+	str = calloc(1, SMB2_DER_OID_LEN + 1);
 	if (str == NULL)
 		err(1, "malloc");
 
@@ -373,8 +373,52 @@ smb2_der_add_sequence(struct smb2_der *d, const struct smb2_der *c)
 void
 smb2_der_add_oid(struct smb2_der *d, const char *oid)
 {
+	unsigned char *buf;
+	size_t len = 0;
+	long subid;
+	char *nextval;
+	bool first = true;
 
-	smb2_der_add_general_string(d, oid);
+	/*
+	 * XXX: Think about it some more - make sure encoded OID can't be larger
+	 * than its textual representation.
+	 */
+	buf = calloc(1, strlen(oid));
+	if (buf == NULL)
+		err(1, "malloc");
+
+	while (oid != NULL) {
+		subid = subid * 40 + strtol(oid, &nextval, 10);
+
+		if (*nextval == '\0')
+			oid = NULL;
+		else if (*nextval == '.')
+			oid = nextval + 1;
+		else
+			errx(1, "smb2_der_add_oid: invalid character '%c'", *nextval);
+
+		if (first) {
+			first = false;
+			continue;
+		}
+
+		for (;;) {
+			buf[len] = subid;
+			subid >>= 7;
+			if (subid == 0) {
+				buf[len] &= 0x7F;
+				len++;
+				break;
+			} else {
+				buf[len] |= 0x80;
+				len++;
+			}
+		}
+
+		subid = 0;
+	}
+
+	smb2_der_add_whatever(d, SMB2_DER_OID, buf, len);
 }
 
 void
