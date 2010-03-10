@@ -44,7 +44,6 @@ void			smb2_der_delete(struct smb2_der *d);
 size_t			smb2_der_get_off(const struct smb2_der *d);
 void			smb2_der_set_off(struct smb2_der *d, size_t off);
 
-void			smb2_der_rewind(struct smb2_der *d);
 void			smb2_der_get_buffer(const struct smb2_der *d, void **buf, size_t *len);
 void			smb2_der_print(struct smb2_der *d);
 

@@ -113,13 +113,6 @@ smb2_der_set_off(struct smb2_der *d, size_t off)
 	d->d_next = off;
 }
 
-void
-smb2_der_rewind(struct smb2_der *d)
-{
-
-	d->d_next = 0;
-}
-
 static int
 smb2_der_get_next_id(struct smb2_der *d, unsigned char *id)
 {
@@ -271,7 +264,7 @@ smb2_der_get_oid(struct smb2_der *d)
 	if (smb2_der_get_next_id(d, &id))
 		return (NULL);
 	if (id != SMB2_DER_OID) {
-		warnx("smb2_der_get_oid: not an OID (code 0x%X, not 0x06)", id & 0xFF);
+		warnx("smb2_der_get_oid: not an OID (id 0x%X)", id & 0xFF);
 		return (NULL);
 	}
 
@@ -323,7 +316,7 @@ smb2_der_get_general_string(struct smb2_der *d)
 	if (smb2_der_get_next_id(d, &id))
 		return (NULL);
 	if (id != SMB2_DER_GENERAL_STRING) {
-		warnx("smb2_der_get_oid: not a general string (code 0x%X)", id & 0xFF);
+		warnx("smb2_der_get_oid: not a general string (id 0x%X)", id & 0xFF);
 		return (NULL);
 	}
 
