@@ -86,11 +86,12 @@ smb2_spnego_take_neg_token_init_2(struct smb2_connection *conn, void *buf, size_
 	char *spnego_oid, *mech_type_oid, *s;
 	unsigned char id;
 
-	blob = smb2_der_new(buf, length);
+	blob = smb2_der_new_from_buf(buf, length);
+	smb2_der_print(blob);
 	gss = smb2_spnego_get_gss(blob);
-	smb2_der_print(gss, 3);
-	smb2_der_rewind(gss);
 	spnego_oid = smb2_der_get_oid(gss);
+	if (spnego_oid == NULL)
+		errx(1, "smb2_spnego_take_neg_token_init_2: SPNEGO OID not found");
 	if (strcmp(spnego_oid, "1.3.6.1.5.5.2") != 0)
 		errx(1, "smb2_spnego_take_neg_token_init_2: received non-SPNEGO token (OID %s)", spnego_oid);
 	spnego = smb2_spnego_get_a0(gss);
@@ -99,6 +100,8 @@ smb2_spnego_take_neg_token_init_2(struct smb2_connection *conn, void *buf, size_
 	mech_types = smb2_spnego_get_a0(nti2);
 	y = smb2_der_get_sequence(mech_types);
 	mech_type_oid = smb2_der_get_oid(y);
+	if (mech_type_oid == NULL)
+		errx(1, "smb2_spnego_take_neg_token_init_2: NTLM OID not found");
 	if (strcmp(mech_type_oid, "1.3.6.1.4.1.311.2.2.10") != 0)
 		errx(1, "smb2_spnego_take_neg_token_init_2: received non-NTLM token (OID %s)", mech_type_oid);
 
@@ -133,9 +136,31 @@ smb2_spnego_take_neg_token_resp(struct smb2_connection *conn, void *buf, size_t 
 void
 smb2_spnego_make_neg_token_init_2(struct smb2_connection *conn, void **buf, size_t *length)
 {
+	struct smb2_der *blob, *gss, *spnego, *nti2;
 
-	*buf = "TOKEN_INIT_2";
-	*length = strlen(*buf);
+	blob = smb2_der_new();
+
+	gss = smb2_der_new();
+	smb2_der_add_oid(gss, "1.3.6.1.5.5.2");
+
+	spnego = smb2_der_new();
+
+	spnego = smb2_der_new();
+	nti2 = smb2_der_new();
+	smb2_der_add_sequence(spnego, nti2);
+	smb2_der_delete(nti2);
+
+	smb2_der_add_constructed(gss, spnego, 0xa0);
+	smb2_der_delete(spnego);
+
+	smb2_der_add_constructed(blob, gss, 0x60);
+	smb2_der_delete(gss);
+
+	smb2_der_get_buffer(blob, buf, length);
+
+	printf("START\n");
+	smb2_der_print(blob);
+	printf("STOP\n");
 }
 
 void
