@@ -437,9 +437,9 @@ smb2_der_add_whatever(struct smb2_der *d, unsigned char id, const void *buf, siz
 	while (d->d_next + 2 + len > d->d_len) {
 		if (d->d_own_buf) {
 			if (d->d_len == 0)
-				d->d_len = 1;
+				d->d_len = 64;
 			else
-				d->d_len *= 2;
+				d->d_len *= 4;
 			d->d_buf = realloc(d->d_buf, d->d_len);
 			if (d->d_buf == NULL)
 				err(1, "realloc");
