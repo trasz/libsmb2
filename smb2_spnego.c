@@ -79,22 +79,59 @@ smb2_spnego_get_a0(struct smb2_der *d)
 	return (c);
 }
 
+static struct smb2_der *
+smb2_spnego_unwrap(struct smb2_der *blob)
+{
+	struct smb2_der *gss, *spnego;
+	char *spnego_oid;
+
+	gss = smb2_spnego_get_gss(blob);
+	spnego_oid = smb2_der_get_oid(gss);
+	if (spnego_oid == NULL) {
+		warnx("smb2_spnego_unwrap: SPNEGO OID not found");
+		smb2_der_delete(gss);
+		return (NULL);
+	}
+	if (strcmp(spnego_oid, "1.3.6.1.5.5.2") != 0) {
+		warnx("smb2_spnego_unwrap: received non-SPNEGO token (OID %s)", spnego_oid);
+		smb2_der_delete(gss);
+		free(spnego_oid);
+		return (NULL);
+	}
+	spnego = smb2_spnego_get_a0(gss);
+	smb2_der_delete(gss);
+
+	return (spnego);
+}
+
+static struct smb2_der *
+smb2_spnego_wrap(struct smb2_der *spnego)
+{
+	struct smb2_der *blob, *gss;
+
+	gss = smb2_der_new();
+	smb2_der_add_oid(gss, "1.3.6.1.5.5.2");
+	smb2_der_add_constructed(gss, spnego, 0xa0);
+
+	blob = smb2_der_new();
+	smb2_der_add_constructed(blob, gss, 0x60);
+	smb2_der_delete(gss);
+
+	return (blob);
+}
+
 void
 smb2_spnego_take_neg_token_init_2(struct smb2_connection *conn, void *buf, size_t length)
 {
-	struct smb2_der *blob, *gss, *spnego, *nti2, *mech_types, *x, *y, *z, *w;
-	char *spnego_oid, *mech_type_oid, *s;
+	struct smb2_der *blob, *spnego, *nti2, *mech_types, *x, *y, *z, *w;
+	char *mech_type_oid, *s;
 	unsigned char id;
 
 	blob = smb2_der_new_from_buf(buf, length);
 	smb2_der_print(blob);
-	gss = smb2_spnego_get_gss(blob);
-	spnego_oid = smb2_der_get_oid(gss);
-	if (spnego_oid == NULL)
-		errx(1, "smb2_spnego_take_neg_token_init_2: SPNEGO OID not found");
-	if (strcmp(spnego_oid, "1.3.6.1.5.5.2") != 0)
-		errx(1, "smb2_spnego_take_neg_token_init_2: received non-SPNEGO token (OID %s)", spnego_oid);
-	spnego = smb2_spnego_get_a0(gss);
+	spnego = smb2_spnego_unwrap(blob);
+	if (spnego == NULL)
+		errx(1, "smb2_spnego_take_neg_token_init_2: didn't found SPNEGO data");
 	nti2 = smb2_der_get_sequence(spnego);
 
 	mech_types = smb2_spnego_get_a0(nti2);
@@ -112,11 +149,9 @@ smb2_spnego_take_neg_token_init_2(struct smb2_connection *conn, void *buf, size_
 
 	free(s);
 	free(mech_type_oid);
-	free(spnego_oid);
 	smb2_der_delete(mech_types);
 	smb2_der_delete(nti2);
 	smb2_der_delete(spnego);
-	smb2_der_delete(gss);
 	smb2_der_delete(blob);
 }
 
@@ -124,8 +159,13 @@ void
 smb2_spnego_make_neg_token_init(struct smb2_connection *conn, void **buf, size_t *length)
 {
 
-	*buf = "TOKEN_INIT";
-	*length = strlen(*buf);
+	struct smb2_der *blob, *spnego;
+
+	spnego = smb2_der_new();
+	blob = smb2_spnego_wrap(spnego);
+	smb2_der_delete(spnego);
+
+	smb2_der_get_buffer(blob, buf, length);
 }
 
 void
@@ -136,25 +176,50 @@ smb2_spnego_take_neg_token_resp(struct smb2_connection *conn, void *buf, size_t 
 void
 smb2_spnego_make_neg_token_init_2(struct smb2_connection *conn, void **buf, size_t *length)
 {
-	struct smb2_der *blob, *gss, *spnego, *nti2;
+	struct smb2_der *blob, *spnego, *nti2, *mech_types, *tmp, *neg_hints, *hint_name;
 
-	blob = smb2_der_new();
+	/*
+         *                       SEQUENCE:
+         *                               OID: 1.3.6.1.4.1.311.2.2.10
+	 */
+	tmp = smb2_der_new();
+	smb2_der_add_oid(tmp, "1.3.6.1.4.1.311.2.2.10");
 
-	gss = smb2_der_new();
-	smb2_der_add_oid(gss, "1.3.6.1.5.5.2");
+	mech_types = smb2_der_new();
+	smb2_der_add_sequence(mech_types, tmp);
+	smb2_der_delete(tmp);
 
-	spnego = smb2_der_new();
+	/*
+         *                       SEQUENCE:
+         *                               CONSTRUCTED, id 0xA0:
+         *                                       "not_defined_in_RFC4178@please_ignore"
+	 */
+	hint_name = smb2_der_new();
+	smb2_der_add_general_string(hint_name, "not_defined_in_RFC4178@please_ignore");
 
-	spnego = smb2_der_new();
+	tmp = smb2_der_new();
+	smb2_der_add_constructed(tmp, hint_name, 0xA0);
+	smb2_der_delete(hint_name);
+
+	neg_hints = smb2_der_new();
+	smb2_der_add_sequence(neg_hints, tmp);
+	smb2_der_delete(tmp);
+
+	/*
+	 * Now put it all together to form NegTokenInit2.
+	 */
 	nti2 = smb2_der_new();
+	smb2_der_add_constructed(nti2, mech_types, 0xA0);
+	smb2_der_delete(mech_types);
+	smb2_der_add_constructed(nti2, neg_hints, 0xA3);
+	smb2_der_delete(neg_hints);
+
+	spnego = smb2_der_new();
 	smb2_der_add_sequence(spnego, nti2);
 	smb2_der_delete(nti2);
 
-	smb2_der_add_constructed(gss, spnego, 0xa0);
+	blob = smb2_spnego_wrap(spnego);
 	smb2_der_delete(spnego);
-
-	smb2_der_add_constructed(blob, gss, 0x60);
-	smb2_der_delete(gss);
 
 	smb2_der_get_buffer(blob, buf, length);
 
@@ -171,7 +236,11 @@ smb2_spnego_take_neg_token_init(struct smb2_connection *conn, void *buf, size_t 
 void
 smb2_spnego_make_neg_token_resp(struct smb2_connection *conn, void **buf, size_t *length)
 {
+	struct smb2_der *blob, *spnego;
 
-	*buf = "TOKEN_RESP";
-	*length = strlen(*buf);
+	spnego = smb2_der_new();
+	blob = smb2_spnego_wrap(spnego);
+	smb2_der_delete(spnego);
+
+	smb2_der_get_buffer(blob, buf, length);
 }
