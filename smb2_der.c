@@ -375,7 +375,7 @@ smb2_der_add_oid(struct smb2_der *d, const char *oid)
 {
 	unsigned char *buf;
 	size_t len = 0;
-	long subid;
+	unsigned long subid, tmp;
 	char *nextval;
 	bool first = true;
 
@@ -402,17 +402,19 @@ smb2_der_add_oid(struct smb2_der *d, const char *oid)
 			continue;
 		}
 
+		tmp = subid & 0x7F;
+		while ((subid >>= 7)) {
+			tmp <<= 8;
+			tmp |= ((subid & 0x7F) | 0x80);
+		}
+
 		for (;;) {
-			buf[len] = subid;
-			subid >>= 7;
-			if (subid == 0) {
-				buf[len] &= 0x7F;
-				len++;
+			buf[len] = tmp;
+			len++;
+			if (tmp & 0x80)
+				tmp >>= 8;
+			else
 				break;
-			} else {
-				buf[len] |= 0x80;
-				len++;
-			}
 		}
 
 		subid = 0;
