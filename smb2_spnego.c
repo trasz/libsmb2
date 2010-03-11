@@ -171,6 +171,11 @@ smb2_spnego_make_neg_token_init(struct smb2_connection *conn, void **buf, size_t
 void
 smb2_spnego_take_neg_token_resp(struct smb2_connection *conn, void *buf, size_t length)
 {
+	struct smb2_der *blob;
+
+	blob = smb2_der_new_from_buf(buf, length);
+	smb2_der_print(blob);
+	smb2_der_delete(blob);
 }
 
 void
@@ -222,15 +227,16 @@ smb2_spnego_make_neg_token_init_2(struct smb2_connection *conn, void **buf, size
 	smb2_der_delete(spnego);
 
 	smb2_der_get_buffer(blob, buf, length);
-
-	printf("START\n");
-	smb2_der_print(blob);
-	printf("STOP\n");
 }
 
 void
 smb2_spnego_take_neg_token_init(struct smb2_connection *conn, void *buf, size_t length)
 {
+	struct smb2_der *blob;
+
+	blob = smb2_der_new_from_buf(buf, length);
+	smb2_der_print(blob);
+	smb2_der_delete(blob);
 }
 
 void

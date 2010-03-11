@@ -140,6 +140,18 @@ smb2_parse_ssreq(struct smb2_packet *p)
 		errx(1, "smb2_parse_ssreq: received packet too small (%d)", p->p_buf_len);
 
 	ssreq = (struct smb2_session_setup_request *)(p->p_buf + SMB2_PH_STRUCTURE_SIZE);
+
+	/*
+	 * -1, because SMB2_SSREQ_STRUCTURE_SIZE includes one byte of the buffer.
+	 */
+	if (ssreq->ssreq_security_buffer_offset != SMB2_PH_STRUCTURE_SIZE + SMB2_SSREQ_STRUCTURE_SIZE - 1)
+		errx(1, "smb2_parse_ssreq: weird security buffer offset, is %d, should be %d",
+		    ssreq->ssreq_security_buffer_offset, SMB2_PH_STRUCTURE_SIZE + SMB2_SSREQ_STRUCTURE_SIZE);
+
+	if (ssreq->ssreq_security_buffer_offset + ssreq->ssreq_security_buffer_length > p->p_buf_len)
+		errx(1, "smb2_parse_ssreq: security buffer (%d) longer than packet (%d)", ssreq->ssreq_security_buffer_length, p->p_buf_len);
+
+	smb2_spnego_take_neg_token_init(p->p_conn, p->p_buf + ssreq->ssreq_security_buffer_offset, ssreq->ssreq_security_buffer_length);
 }
 
 static void
