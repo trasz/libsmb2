@@ -207,7 +207,7 @@ smb2_der_print_indent(struct smb2_der *d, int indent)
 			smb2_der_delete(c);
 		} else {
 			smb2_der_get_whatever(d, &id, NULL, &len);
-			fprintf(stderr, "%*sOTHER: id 0x%X, len %zd\n", indent, "", id & 0xFF, len);
+			printf("%*sOTHER: id 0x%X, len %zd\n", indent, "", id & 0xFF, len);
 		}
 	}
 
