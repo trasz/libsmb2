@@ -155,7 +155,6 @@ smb2_der_extract(struct smb2_der *d, unsigned char *id, size_t *len)
 		 */
 		*len = 0;
 		for (i = 0; i < (length_octet & 0x7F); i++) {
-			//printf("round %zd, 0x%x\n", i, d->d_buf[d->d_next]);
 			if (d->d_next > d->d_len) {
 				warnx("smb2_der_extract: truncated");
 				return (-1);
@@ -454,8 +453,6 @@ smb2_der_add_whatever(struct smb2_der *d, unsigned char id, const void *buf, siz
 	 */
 	size_t length_len = 0;
 
-	printf("adding len %zd\n", len);
-
 	if (len > 127) {
 		/*
 		 * To store the value, we have to reverse the byte order.  Reversed
@@ -473,7 +470,6 @@ smb2_der_add_whatever(struct smb2_der *d, unsigned char id, const void *buf, siz
 			tmp_len >>= 8;
 			length_len++;
 		}
-		//printf("number of bytes required: %d\n", length_len);
 	}
 
 	while (d->d_next + 2 + length_len + len > d->d_len) {
@@ -492,12 +488,10 @@ smb2_der_add_whatever(struct smb2_der *d, unsigned char id, const void *buf, siz
 	d->d_buf[d->d_next++] = id;
 	if (length_len == 0) {
 		d->d_buf[d->d_next++] = len & 0x7F;
-		printf("adding byte 0x%X\n", len & 0x7F);
 	} else {
 		d->d_buf[d->d_next++] = length_len | 0x80;
 		for (; length_len > 0; length_len--) {
 			d->d_buf[d->d_next++] = tmp;
-			printf("adding byte 0x%X\n", tmp & 0xFF);
 			tmp >>= 8;
 		}
 	}
