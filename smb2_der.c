@@ -144,9 +144,8 @@ smb2_der_extract(struct smb2_der *d, unsigned char *id, size_t *len)
 	if (smb2_der_get_next_id(d, id))
 		return (-1);
 
-	*id = d->d_buf[d->d_next];
-	length_octet = d->d_buf[d->d_next + 1];
-	d->d_next += 2;
+	*id = d->d_buf[d->d_next++];
+	length_octet = d->d_buf[d->d_next++];
 
 	if (length_octet & 0x80) {
 		/*
