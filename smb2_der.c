@@ -41,7 +41,7 @@
 #define	SMB2_DER_OID_LEN	256
 
 struct smb2_der {
-	char		*d_buf;
+	unsigned char	*d_buf;
 	size_t		d_len;
 	size_t		d_next;
 	bool		d_own_buf;
@@ -139,6 +139,7 @@ static int
 smb2_der_extract(struct smb2_der *d, unsigned char *id, size_t *len)
 {
 	char length_octet;
+	size_t i;
 
 	if (smb2_der_get_next_id(d, id))
 		return (-1);
@@ -148,10 +149,23 @@ smb2_der_extract(struct smb2_der *d, unsigned char *id, size_t *len)
 	d->d_next += 2;
 
 	if (length_octet & 0x80) {
-		warnx("smb2_der_extract: long lengths not supported yet");
-		return (-1);
-	}
-	*len = length_octet & 0x7F;
+		/*
+		 * "Long length" - first octet specifies number of octets
+		 * used to store length.
+		 */
+		*len = 0;
+		for (i = 0; i < (length_octet & 0x7F); i++) {
+			//printf("round %zd, 0x%x\n", i, d->d_buf[d->d_next]);
+			if (d->d_next > d->d_len) {
+				warnx("smb2_der_extract: truncated");
+				return (-1);
+			}
+			*len <<= 8;
+			*len |= d->d_buf[d->d_next];
+			d->d_next++;
+		}
+	} else
+		*len = length_octet & 0x7F;
 
 	if (d->d_next + *len > d->d_len) {
 		warnx("smb2_der_extract: object len %d, but only %d left", *len, d->d_len - d->d_next);
@@ -433,8 +447,36 @@ smb2_der_add_general_string(struct smb2_der *d, const char *str)
 void
 smb2_der_add_whatever(struct smb2_der *d, unsigned char id, const void *buf, size_t len)
 {
+	unsigned long tmp;
+	/*
+	 * Number of bytes required to store length in the long form.  If length
+	 * is small enough to use short form, 'length_len' is 0.
+	 */
+	size_t length_len = 0;
 
-	while (d->d_next + 2 + len > d->d_len) {
+	printf("adding len %zd\n", len);
+
+	if (len > 127) {
+		/*
+		 * To store the value, we have to reverse the byte order.  Reversed
+		 * bytes are stored in 'tmp' variable; number of bytes required
+		 * ends up in 'length_len'.
+		 */
+		size_t tmp_len;
+
+		tmp = 0;
+		length_len = 0;
+		tmp_len = len;
+		while (tmp_len > 0) {
+			tmp <<= 8;
+			tmp |= tmp_len & 0xFF;
+			tmp_len >>= 8;
+			length_len++;
+		}
+		//printf("number of bytes required: %d\n", length_len);
+	}
+
+	while (d->d_next + 2 + length_len + len > d->d_len) {
 		if (d->d_own_buf) {
 			if (d->d_len == 0)
 				d->d_len = 64;
@@ -448,7 +490,18 @@ smb2_der_add_whatever(struct smb2_der *d, unsigned char id, const void *buf, siz
 	}
 
 	d->d_buf[d->d_next++] = id;
-	d->d_buf[d->d_next++] = len & 0x7F;
+	if (length_len == 0) {
+		d->d_buf[d->d_next++] = len & 0x7F;
+		printf("adding byte 0x%X\n", len & 0x7F);
+	} else {
+		d->d_buf[d->d_next++] = length_len | 0x80;
+		for (; length_len > 0; length_len--) {
+			d->d_buf[d->d_next++] = tmp;
+			printf("adding byte 0x%X\n", tmp & 0xFF);
+			tmp >>= 8;
+		}
+	}
+
 	memcpy(&(d->d_buf[d->d_next]), buf, len);
 	d->d_next += len;
 }
