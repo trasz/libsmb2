@@ -87,6 +87,7 @@ smb2_packet_add_ssreq(struct smb2_packet *p)
 	memcpy(p->p_buf + ssreq->ssreq_security_buffer_offset, buf, len);
 	ssreq->ssreq_security_buffer_length = len;
 	p->p_buf_len += len;
+	smb2_spnego_done(p->p_conn);
 
 	return (ssreq);
 }
@@ -158,7 +159,9 @@ smb2_client_parse(struct smb2_packet *p)
 {
 	struct smb2_packet_header_sync *ph;
 
-	ph = smb2_packet_parse_header(p);
+	ph = smb2_packet_parse_header(p, NULL);
+	if (ph == NULL)
+		return;
 
 	switch (ph->ph_command) {
 		case SMB2_NEGOTIATE:
@@ -189,17 +192,30 @@ smb2_client_negotiate(struct smb2_connection *conn)
 	smb2_client_parse(p);
 	smb2_packet_delete(p);
 
-	fprintf(stderr, "SESSION SETUP REQUEST...\n");
+	fprintf(stderr, "SESSION SETUP REQUEST 1...\n");
 	p = smb2_packet_new(conn);
 	smb2_client_add_command(p, SMB2_SESSION_SETUP);
 	smb2_tcp_send(p);
 	smb2_packet_delete(p);
 
-	fprintf(stderr, "SESSION SETUP RESPONSE...\n");
+	fprintf(stderr, "SESSION SETUP RESPONSE 1...\n");
 	p = smb2_packet_new(conn);
 	smb2_tcp_receive(p);
 	smb2_client_parse(p);
 	smb2_packet_delete(p);
+
+	fprintf(stderr, "SESSION SETUP REQUEST 2...\n");
+	p = smb2_packet_new(conn);
+	smb2_client_add_command(p, SMB2_SESSION_SETUP);
+	smb2_tcp_send(p);
+	smb2_packet_delete(p);
+
+	fprintf(stderr, "SESSION SETUP RESPONSE 2...\n");
+	p = smb2_packet_new(conn);
+	smb2_tcp_receive(p);
+	smb2_client_parse(p);
+	smb2_packet_delete(p);
+
 
 	return (0);
 }

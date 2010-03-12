@@ -45,4 +45,9 @@ void	smb2_spnego_make_neg_token_init_2(struct smb2_connection *conn, void **buf,
 void	smb2_spnego_take_neg_token_init(struct smb2_connection *conn, void *buf, size_t length);
 void	smb2_spnego_make_neg_token_resp(struct smb2_connection *conn, void **buf, size_t *length);
 
+/*
+ * Called after smb2_spnego_make_whatever(), to free c_spnego_context.
+ */
+void	smb2_spnego_done(struct smb2_connection *conn);
+
 #endif /* !SMB2_SPNEGO_H */

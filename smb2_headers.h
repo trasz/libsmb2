@@ -75,8 +75,9 @@ struct smb2_packet_header_sync {
 	int8_t	ph_signature[16];
 } ATTRIBUTE_PACKED;
 
-#define	SMB2_PH_PROTOCOL_ID	0x424D53FE /* 0xFE 'S' 'M' 'B', reversed */
-#define	SMB2_PH_STRUCTURE_SIZE	64
+#define	SMB2_PH_PROTOCOL_ID		0x424D53FE /* 0xFE 'S' 'M' 'B', reversed */
+#define	SMB2_PH_SMB1_PROTOCOL_ID	0x424D53FF /* 0xFF 'S' 'M' 'B', reversed */
+#define	SMB2_PH_STRUCTURE_SIZE		64
 CTASSERT(sizeof(struct smb2_packet_header_async) == SMB2_PH_STRUCTURE_SIZE);
 CTASSERT(sizeof(struct smb2_packet_header_sync) == SMB2_PH_STRUCTURE_SIZE);
 

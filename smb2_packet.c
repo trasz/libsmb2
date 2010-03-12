@@ -58,25 +58,41 @@ smb2_packet_add_header_sync(struct smb2_packet *p)
 }
 
 struct smb2_packet_header_sync *
-smb2_packet_parse_header(struct smb2_packet *p)
+smb2_packet_parse_header(struct smb2_packet *p, bool *got_smb1)
 {
 	struct smb2_packet_header_sync *ph;
 
-	if (p->p_buf_len < SMB2_PH_STRUCTURE_SIZE)
-		errx(1, "smb2_parse_packet_header: received packet too small (%d)", p->p_buf_len);
+	if (got_smb1 != NULL)
+		*got_smb1 = false;
+
+	if (p->p_buf_len < SMB2_PH_STRUCTURE_SIZE) {
+		warnx("smb2_parse_packet_header: received packet too small (%d)", p->p_buf_len);
+		return (NULL);
+	}
 
 	ph = (struct smb2_packet_header_sync *)p->p_buf;
 
-	if (ph->ph_protocol_id != SMB2_PH_PROTOCOL_ID)
-		errx(1, "smb2_parse_packet_header: invalid protocol id (0x%X)", ph->ph_protocol_id);
-	if (ph->ph_structure_size != SMB2_PH_STRUCTURE_SIZE)
-		errx(1, "smb2_parse_packet_header: invalid structure size (%d)", ph->ph_structure_size);
+	if (ph->ph_protocol_id != SMB2_PH_PROTOCOL_ID) {
+		if (ph->ph_protocol_id == SMB2_PH_SMB1_PROTOCOL_ID) {
+			if (got_smb1 != NULL)
+				*got_smb1 = true;
+			warnx("smb2_parse_packet_header: SMB1 protocol id received");
+		} else
+			warnx("smb2_parse_packet_header: invalid protocol id (0x%X)", ph->ph_protocol_id);
+		return (NULL);
+	}
+	if (ph->ph_structure_size != SMB2_PH_STRUCTURE_SIZE) {
+		warnx("smb2_parse_packet_header: invalid structure size (%d)", ph->ph_structure_size);
+		return (NULL);
+	}
 
 	smb2_connection_add_credits(p->p_conn, ph->ph_credit_request_response);
 	//printf("credits granted: %d\n", ph->ph_credit_request_response);
 
-	if (ph->ph_status != SMB2_STATUS_SUCCESS)
-		errx(1, "smb2_parse_packet_header: status not success (%s)", smb2_strstatus(ph->ph_status));
+	if (ph->ph_status != SMB2_STATUS_SUCCESS && ph->ph_status != SMB2_STATUS_MORE_PROCESSING_REQUIRED) {
+		warnx("smb2_parse_packet_header: status not success (%s)", smb2_strstatus(ph->ph_status));
+		return (NULL);
+	}
 
 	return (ph);
 }

@@ -31,6 +31,8 @@
 
 #define	SMB2_P_BUF_SIZE		1024
 
+#include <stdbool.h>
+
 struct smb2_connection;
 
 struct smb2_packet {
@@ -43,6 +45,6 @@ struct smb2_packet {
 struct smb2_packet		*smb2_packet_new(struct smb2_connection *conn);
 void				smb2_packet_delete(struct smb2_packet *p);
 struct smb2_packet_header_sync	*smb2_packet_add_header_sync(struct smb2_packet *p);
-struct smb2_packet_header_sync	*smb2_packet_parse_header(struct smb2_packet *p);
+struct smb2_packet_header_sync	*smb2_packet_parse_header(struct smb2_packet *p, bool *got_smb1);
 
 #endif /* !SMB2_PACKET_H */

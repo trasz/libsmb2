@@ -39,12 +39,14 @@
  */
 
 #include <err.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "smb2_connection.h"
 #include "smb2_der.h"
+#include "smb2_ntlmssp.h"
 #include "smb2_spnego.h"
 
 static struct smb2_der *
@@ -82,7 +84,7 @@ smb2_spnego_get_a0(struct smb2_der *d)
 static struct smb2_der *
 smb2_spnego_unwrap(struct smb2_der *blob)
 {
-	struct smb2_der *gss, *spnego;
+	struct smb2_der *gss, *spnego, *tmp;
 	char *spnego_oid;
 
 	gss = smb2_spnego_get_gss(blob);
@@ -101,17 +103,24 @@ smb2_spnego_unwrap(struct smb2_der *blob)
 	spnego = smb2_spnego_get_a0(gss);
 	smb2_der_delete(gss);
 
-	return (spnego);
+	tmp = smb2_der_get_sequence(spnego);
+	smb2_der_delete(spnego);
+
+	return (tmp);
 }
 
 static struct smb2_der *
 smb2_spnego_wrap(struct smb2_der *spnego)
 {
-	struct smb2_der *blob, *gss;
+	struct smb2_der *blob, *gss, *tmp;
+
+	tmp = smb2_der_new();
+	smb2_der_add_sequence(tmp, spnego);
 
 	gss = smb2_der_new();
 	smb2_der_add_oid(gss, "1.3.6.1.5.5.2");
-	smb2_der_add_constructed(gss, spnego, 0xa0);
+	smb2_der_add_constructed(gss, tmp, 0xa0);
+	smb2_der_delete(tmp);
 
 	blob = smb2_der_new();
 	smb2_der_add_constructed(blob, gss, 0x60);
@@ -123,48 +132,88 @@ smb2_spnego_wrap(struct smb2_der *spnego)
 void
 smb2_spnego_take_neg_token_init_2(struct smb2_connection *conn, void *buf, size_t length)
 {
-	struct smb2_der *blob, *spnego, *nti2, *mech_types, *x, *y, *z, *w;
-	char *mech_type_oid, *s;
-	unsigned char id;
+	struct smb2_der *blob, *nti2, *mech_types, *tmp;
+	char *mech_type_oid;
+	bool ntlm_found = false;
 
 	blob = smb2_der_new_from_buf(buf, length);
 	smb2_der_print(blob);
-	spnego = smb2_spnego_unwrap(blob);
-	if (spnego == NULL)
+	nti2 = smb2_spnego_unwrap(blob);
+	if (nti2 == NULL)
 		errx(1, "smb2_spnego_take_neg_token_init_2: didn't found SPNEGO data");
-	nti2 = smb2_der_get_sequence(spnego);
 
 	mech_types = smb2_spnego_get_a0(nti2);
-	y = smb2_der_get_sequence(mech_types);
-	mech_type_oid = smb2_der_get_oid(y);
-	if (mech_type_oid == NULL)
+	tmp = smb2_der_get_sequence(mech_types);
+	for (;;) {
+		mech_type_oid = smb2_der_get_oid(tmp);
+		if (mech_type_oid == NULL)
+			break;
+
+		if (strcmp(mech_type_oid, "1.3.6.1.4.1.311.2.2.10") == 0) {
+			ntlm_found = true;
+			break;
+		}
+		warnx("smb2_spnego_take_neg_token_init_2: received non-NTLM token (OID %s)", mech_type_oid);
+		free(mech_type_oid);
+	}
+	if (!ntlm_found)
 		errx(1, "smb2_spnego_take_neg_token_init_2: NTLM OID not found");
-	if (strcmp(mech_type_oid, "1.3.6.1.4.1.311.2.2.10") != 0)
-		errx(1, "smb2_spnego_take_neg_token_init_2: received non-NTLM token (OID %s)", mech_type_oid);
 
-	x = smb2_der_get_constructed(nti2, &id);
-	z = smb2_der_get_sequence(x);
-	w = smb2_der_get_constructed(z, &id);
-	s = smb2_der_get_general_string(w);
-
-	free(s);
-	free(mech_type_oid);
 	smb2_der_delete(mech_types);
+	smb2_der_delete(tmp);
 	smb2_der_delete(nti2);
-	smb2_der_delete(spnego);
 	smb2_der_delete(blob);
+}
+
+static struct smb2_der *
+smb2_spnego_wrap_ntlm(int spnego_id, int ntlm_id, void *buf, size_t len)
+{
+	struct smb2_der *blob, *spnego, *mech_types, *tmp, *negotiate;
+
+	/*
+         *                       SEQUENCE:
+         *                               OID: 1.3.6.1.4.1.311.2.2.10
+	 */
+	tmp = smb2_der_new();
+	smb2_der_add_oid(tmp, "1.3.6.1.4.1.311.2.2.10");
+
+	mech_types = smb2_der_new();
+	smb2_der_add_sequence(mech_types, tmp);
+	smb2_der_delete(tmp);
+
+	/*
+         *                       CONSTRUCTED, id whatever:
+         *                               OTHER, id 0x04:
+	 */
+	negotiate = smb2_der_new();
+	smb2_der_add_whatever(negotiate, ntlm_id, buf, len);
+
+	/*
+	 * Now put it all together.
+	 */
+	spnego = smb2_der_new();
+	smb2_der_add_constructed(spnego, mech_types, 0xA0);
+	smb2_der_delete(mech_types);
+	smb2_der_add_constructed(spnego, negotiate, spnego_id);
+	smb2_der_delete(negotiate);
+
+	blob = smb2_spnego_wrap(spnego);
+	smb2_der_delete(spnego);
+
+	return (blob);
 }
 
 void
 smb2_spnego_make_neg_token_init(struct smb2_connection *conn, void **buf, size_t *length)
 {
+	struct smb2_der *blob;
+	void *ntlm_buf;
+	size_t ntlm_len;
 
-	struct smb2_der *blob, *spnego;
+	smb2_ntlmssp_make_negotiate(conn, &ntlm_buf, &ntlm_len);
+	blob = smb2_spnego_wrap_ntlm(0xA2, 0x04, ntlm_buf, ntlm_len);
 
-	spnego = smb2_der_new();
-	blob = smb2_spnego_wrap(spnego);
-	smb2_der_delete(spnego);
-
+	conn->c_spnego_context = blob;
 	smb2_der_get_buffer(blob, buf, length);
 }
 
@@ -181,7 +230,7 @@ smb2_spnego_take_neg_token_resp(struct smb2_connection *conn, void *buf, size_t 
 void
 smb2_spnego_make_neg_token_init_2(struct smb2_connection *conn, void **buf, size_t *length)
 {
-	struct smb2_der *blob, *spnego, *nti2, *mech_types, *tmp, *neg_hints, *hint_name;
+	struct smb2_der *blob, *nti2, *mech_types, *tmp, *neg_hints, *hint_name;
 
 	/*
          *                       SEQUENCE:
@@ -219,13 +268,10 @@ smb2_spnego_make_neg_token_init_2(struct smb2_connection *conn, void **buf, size
 	smb2_der_add_constructed(nti2, neg_hints, 0xA3);
 	smb2_der_delete(neg_hints);
 
-	spnego = smb2_der_new();
-	smb2_der_add_sequence(spnego, nti2);
+	blob = smb2_spnego_wrap(nti2);
 	smb2_der_delete(nti2);
 
-	blob = smb2_spnego_wrap(spnego);
-	smb2_der_delete(spnego);
-
+	conn->c_spnego_context = blob;
 	smb2_der_get_buffer(blob, buf, length);
 }
 
@@ -242,11 +288,23 @@ smb2_spnego_take_neg_token_init(struct smb2_connection *conn, void *buf, size_t 
 void
 smb2_spnego_make_neg_token_resp(struct smb2_connection *conn, void **buf, size_t *length)
 {
-	struct smb2_der *blob, *spnego;
+	struct smb2_der *blob;
+	void *ntlm_buf;
+	size_t ntlm_len;
 
-	spnego = smb2_der_new();
-	blob = smb2_spnego_wrap(spnego);
-	smb2_der_delete(spnego);
+	smb2_ntlmssp_make_challenge(conn, &ntlm_buf, &ntlm_len);
+	blob = smb2_spnego_wrap_ntlm(0xA2, 0x04, ntlm_buf, ntlm_len);
 
+	conn->c_spnego_context = blob;
 	smb2_der_get_buffer(blob, buf, length);
+}
+
+void
+smb2_spnego_done(struct smb2_connection *conn)
+{
+	struct smb2_der *blob;
+
+	blob = (struct smb2_der *)conn->c_spnego_context;
+	smb2_der_delete(blob);
+	conn->c_spnego_context = NULL;
 }

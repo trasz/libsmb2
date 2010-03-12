@@ -23,28 +23,31 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $Id: smb2_status.h,v 1.1 2010/03/05 14:59:21 trasz Exp $
+ * $Id$
  */
 
-#ifndef SMB2_STATUS_H
-#define	SMB2_STATUS_H
+#ifndef SMB2_NTLMSSP_H
+#define	SMB2_NTLMSSP_H
 
-#include <stdint.h>
+struct smb2_connection;
 
-#define	SMB2_STATUS_SUCCESS				0x00000000
-#define	SMB2_STATUS_MORE_PROCESSING_REQUIRED		0xC0000016
+/*
+ * Client-side routines.
+ */
+void	smb2_ntlmssp_make_negotiate(struct smb2_connection *conn, void **buf, size_t *length);
+void	smb2_ntlmssp_take_challenge(struct smb2_connection *conn, void *buf, size_t length);
+void	smb2_ntlmssp_make_authenticate(struct smb2_connection *conn, void **buf, size_t *length);
 
-#define	SMB2_STATUS_SEV(s)	((s & 0xC0000000) >> 30)
-#define	SMB2_STATUS_C(s)	((s & 0x20000000) >> 29)
-#define	SMB2_STATUS_N(s)	((s & 0x10000000) >> 28)
-#define	SMB2_STATUS_FACILITY(s)	((s & 0x0FFF0000) >> 16)
-#define	SMB2_STATUS_CODE(s)	(s & 0x0000FFFF)
+/*
+ * Server-side routines.
+ */
+void	smb2_ntlmssp_take_negotiate(struct smb2_connection *conn, void *buf, size_t length);
+void	smb2_ntlmssp_make_challenge(struct smb2_connection *conn, void **buf, size_t *length);
+void	smb2_ntlmssp_take_authenticate(struct smb2_connection *conn, void *buf, size_t length);
 
-#define	SMB2_STATUS_SEVERITY_SUCCESS		0
-#define	SMB2_STATUS_SEVERITY_INFORMATIONAL	1
-#define	SMB2_STATUS_SEVERITY_WARNING		2
-#define	SMB2_STATUS_SEVERITY_ERROR		3
+/*
+ * Called after smb2_ntlm_make_whatever(), to free stuff.
+ */
+void	smb2_ntlmssp_done(struct smb2_connection *conn);
 
-char	*smb2_strstatus(int32_t status);
-
-#endif /* !SMB2_STATUS_H */
+#endif /* !SMB2_NTLMSSP_H */

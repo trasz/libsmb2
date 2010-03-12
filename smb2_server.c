@@ -29,8 +29,9 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <err.h>
+#include <limits.h>
 #include <netdb.h>
-#include <string.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -71,6 +72,7 @@ smb2_packet_add_nres(struct smb2_packet *p)
 	memcpy(p->p_buf + nres->nres_security_buffer_offset, buf, len);
 	nres->nres_security_buffer_length = len;
 	p->p_buf_len += len;
+	smb2_spnego_done(p->p_conn);
 
 	return (nres);
 }
@@ -92,7 +94,7 @@ smb2_packet_add_ssres(struct smb2_packet *p)
 	p->p_buf_len += sizeof(*ssres) - 1;
 	
 	ssres->ssres_structure_size = SMB2_SSREQ_STRUCTURE_SIZE;
-	ssres->ssres_session_flags = SMB2_SSRES_SESSION_FLAG_IS_NULL;
+	ssres->ssres_session_flags = 0;
 
 	smb2_spnego_make_neg_token_resp(p->p_conn, &buf, &len);
 	/* -1, because size includes one byte of the security buffer. */
@@ -100,6 +102,7 @@ smb2_packet_add_ssres(struct smb2_packet *p)
 	memcpy(p->p_buf + ssres->ssres_security_buffer_offset, buf, len);
 	ssres->ssres_security_buffer_length = len;
 	p->p_buf_len += len;
+	smb2_spnego_done(p->p_conn);
 
 	return (ssres);
 }
@@ -158,8 +161,16 @@ static void
 smb2_server_parse(struct smb2_packet *p)
 {
 	struct smb2_packet_header_sync *ph;
+	bool got_smb1;
 
-	ph = smb2_packet_parse_header(p);
+	ph = smb2_packet_parse_header(p, &got_smb1);
+	/*
+	 * XXX: This is evil.
+	 */
+	if (got_smb1)
+		return;
+	if (ph == NULL)
+		return;
 
 	switch (ph->ph_command) {
 		case SMB2_NEGOTIATE:
@@ -205,19 +216,11 @@ smb2_server_negotiate(struct smb2_connection *conn)
 	return (0);
 }
 
-struct smb2_connection *
-smb2_accept(void)
+int
+smb2_listen(void)
 {
 	int error, fd;
 	struct sockaddr_in sin;
-	struct smb2_connection *conn;
-
-	conn = calloc(1, sizeof(*conn));
-	if (conn == NULL)
-		err(1, "malloc");
-
-	conn->c_credits_first = 0;
-	conn->c_credits_after_last = 1;
 
 	fd = socket(PF_INET, SOCK_STREAM, 0);
 	if (fd < 0)
@@ -236,13 +239,38 @@ smb2_accept(void)
 	if (error)
 		err(1, "listen");
 
+	return (fd);
+}
+
+struct smb2_connection *
+smb2_accept(int fd)
+{
+	struct smb2_connection *conn;
+	int error;
+	pid_t child;
+
+	conn = calloc(1, sizeof(*conn));
+	if (conn == NULL)
+		err(1, "malloc");
+
+	conn->c_credits_first = 0;
+	conn->c_credits_after_last = INT_MAX; /* XXX */
+
 	conn->c_fd = accept(fd, NULL, 0);
 	if (conn->c_fd < 0)
 		err(1, "accept");
 
+	child = fork();
+	if (child < 0)
+		err(1, "fork");
+	if (child > 0) {
+		signal(SIGCHLD, SIG_IGN);
+		return (NULL);
+	}
+
 	error = smb2_server_negotiate(conn);
 	if (error)
-		errx(1, "smb2_negotiate");
+		errx(1, "smb2_negotiate failed");
 
 	return (conn);
 }
@@ -258,12 +286,22 @@ int
 main(int argc, char **argv)
 {
 	struct smb2_connection *conn;
+	int fd;
 
 	if (argc != 1)
 		usage();
 
-	conn = smb2_accept();
-	smb2_disconnect(conn);
+	fd = smb2_listen();
+
+	for (;;) {
+		printf("ACCEPT\n");
+		conn = smb2_accept(fd);
+		if (conn != NULL) {
+			printf("DISCONNECT\n");
+			smb2_disconnect(conn);
+			exit(0);
+		}
+	}
 
 	return (0);
 }

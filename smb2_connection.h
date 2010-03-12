@@ -35,6 +35,7 @@ struct smb2_connection {
 	int		c_fd;
 	int64_t		c_credits_first;
 	int64_t		c_credits_after_last;
+	void		*c_spnego_context;
 };
 
 void				smb2_connection_add_credits(struct smb2_connection *conn, int64_t credits);
