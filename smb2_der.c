@@ -83,6 +83,9 @@ smb2_der_delete(struct smb2_der *d)
 	if (d == NULL)
 		return;
 
+	if (d->d_own_buf && d->d_buf != NULL)
+		free(d->d_buf);
+
 	/* XXX: Left for debugging purposes. */
 	d->d_buf = NULL;
 	d->d_len = 0;
@@ -90,7 +93,6 @@ smb2_der_delete(struct smb2_der *d)
 
 	free(d);
 }
-
 
 size_t
 smb2_der_get_off(const struct smb2_der *d)
