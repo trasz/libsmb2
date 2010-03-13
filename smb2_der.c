@@ -152,6 +152,10 @@ smb2_der_extract(struct smb2_der *d, unsigned char *id, size_t *len)
 		 * "Long length" - first octet specifies number of octets
 		 * used to store length.
 		 */
+		if ((length_octet & 0x80) > sizeof(*len)) {
+			warnx("smb2_der_extract: length %d too big, max is %d", length_octet & 0x80, sizeof(*len));
+			return (-1);
+		}
 		*len = 0;
 		for (i = 0; i < (length_octet & 0x7F); i++) {
 			if (d->d_next > d->d_len) {
