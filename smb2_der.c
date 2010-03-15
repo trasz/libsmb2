@@ -141,7 +141,7 @@ static int
 smb2_der_extract(struct smb2_der *d, unsigned char *id, size_t *len)
 {
 	char length_octet;
-	size_t i;
+	size_t i, length_len;
 
 	if (smb2_der_get_next_id(d, id))
 		return (-1);
@@ -154,12 +154,13 @@ smb2_der_extract(struct smb2_der *d, unsigned char *id, size_t *len)
 		 * "Long length" - first octet specifies number of octets
 		 * used to store length.
 		 */
-		if ((length_octet & 0x80) > sizeof(*len)) {
-			warnx("smb2_der_extract: length %d too big, max is %d", length_octet & 0x80, sizeof(*len));
+		length_len = length_octet & 0x7F;
+		if (length_len > sizeof(*len)) {
+			warnx("smb2_der_extract: length %d too big, max is %d", length_len, sizeof(*len));
 			return (-1);
 		}
 		*len = 0;
-		for (i = 0; i < (length_octet & 0x7F); i++) {
+		for (i = 0; i < length_len; i++) {
 			if (d->d_next > d->d_len) {
 				warnx("smb2_der_extract: truncated");
 				return (-1);
