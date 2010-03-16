@@ -35,8 +35,14 @@ struct smb2_connection {
 	int		c_fd;
 	int64_t		c_credits_first;
 	int64_t		c_credits_after_last;
-	void		*c_spnego_context;
+	int		c_state;
+	int		c_spnego_state;
+	void		*c_spnego_buf;
 };
+
+#define	SMB2_CONNECTION_STATE_INIT		0
+#define	SMB2_CONNECTION_STATE_NEGOTIATED	0
+#define	SMB2_CONNECTION_STATE_SESSION_SET_UP	0
 
 void				smb2_connection_add_credits(struct smb2_connection *conn, int64_t credits);
 int64_t				smb2_connection_next_message_id(struct smb2_connection *conn);

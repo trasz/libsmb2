@@ -91,9 +91,22 @@ struct smb2_ntlmssp_authenticate {
 };
 
 #define	SMB2_NTLMSSP_SIGNATURE		"NTLMSSP\0"
+
+/*
+ * Possible values for nn_message_type.
+ */
 #define	SMB2_NTLMSSP_NEGOTIATE		1
 #define	SMB2_NTLMSSP_CHALLENGE		2
 #define	SMB2_NTLMSSP_AUTHENTICATE	3
+
+/*
+ * Possible flags for nn_negotiate_flags.
+ */
+#define	SMB2_NTLMSSP_NEGOTIATE_128		1 << 2
+#define	SMB2_NTLMSSP_REQUEST_TARGET		1 << 29
+#define	SMB2_NTLMSSP_NEGOTIATE_NTLM		1 << 22
+#define	SMB2_NTLMSSP_NEGOTIATE_ALWAYS_SIGN	1 << 16
+#define	SMB2_NTLMSSP_NEGOTIATE_UNICODE		1 << 31
 
 void
 smb2_ntlmssp_make_negotiate(struct smb2_connection *conn, void **buf, size_t *len)
@@ -107,9 +120,13 @@ smb2_ntlmssp_make_negotiate(struct smb2_connection *conn, void **buf, size_t *le
 	memcpy(&nn->nn_signature, SMB2_NTLMSSP_SIGNATURE, sizeof(nn->nn_signature));
 	nn->nn_message_type = SMB2_NTLMSSP_NEGOTIATE;
 	/*
-	 * Windows Server 2008 sends 0xe2088297 here.
+	 * Windows Server 2008 sends 0xe2088297 here.  Flags below are mandatory,
+	 * as defined in [MS-NLMP], 3.1.5.1.1.
 	 */
-	nn->nn_negotiate_flags = 0xA0000281;
+	nn->nn_negotiate_flags = SMB2_NTLMSSP_REQUEST_TARGET |
+	    SMB2_NTLMSSP_NEGOTIATE_NTLM | SMB2_NTLMSSP_NEGOTIATE_ALWAYS_SIGN |
+	    SMB2_NTLMSSP_NEGOTIATE_UNICODE;
+	// SMB2_NTLMSSP_NEGOTIATE_EXTENDED_SESSIONSECURITY?
 
 	*buf = nn;
 	*len = sizeof(*nn);
@@ -130,12 +147,11 @@ smb2_ntlmssp_make_authenticate(struct smb2_connection *conn, void **buf, size_t 
 		err(1, "malloc");
 
 	memcpy(&na->na_signature, SMB2_NTLMSSP_SIGNATURE, sizeof(na->na_signature));
-	na->na_message_type = SMB2_NTLMSSP_CHALLENGE;
+	na->na_message_type = SMB2_NTLMSSP_AUTHENTICATE;
 	na->na_negotiate_flags = 0xe2088297;
 
 	*buf = na;
 	*len = sizeof(*na);
-
 }
 
 void
@@ -154,7 +170,10 @@ smb2_ntlmssp_make_challenge(struct smb2_connection *conn, void **buf, size_t *le
 
 	memcpy(&nc->nc_signature, SMB2_NTLMSSP_SIGNATURE, sizeof(nc->nc_signature));
 	nc->nc_message_type = SMB2_NTLMSSP_CHALLENGE;
-	nc->nc_negotiate_flags = 0xe2088297;
+	//nc->nc_negotiate_flags = 0xe2088297;
+	nc->nc_negotiate_flags = SMB2_NTLMSSP_REQUEST_TARGET |
+	    SMB2_NTLMSSP_NEGOTIATE_NTLM | SMB2_NTLMSSP_NEGOTIATE_ALWAYS_SIGN |
+	    SMB2_NTLMSSP_NEGOTIATE_UNICODE;
 
 	*buf = nc;
 	*len = sizeof(*nc);

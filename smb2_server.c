@@ -41,6 +41,7 @@
 #include "smb2_connection.h"
 #include "smb2_headers.h"
 #include "smb2_spnego.h"
+#include "smb2_status.h"
 #include "smb2_tcp.h"
 
 static struct smb2_negotiate_response *
@@ -87,6 +88,7 @@ smb2_packet_add_ssres(struct smb2_packet *p)
 
 	ph = smb2_packet_add_header_sync(p);
 	ph->ph_command = SMB2_SESSION_SETUP;
+	ph->ph_status = SMB2_STATUS_MORE_PROCESSING_REQUIRED;
 	ph->ph_flags |= SMB2_FLAGS_SERVER_TO_REDIR;
 
 	ssres = (struct smb2_session_setup_response *)(p->p_buf + p->p_buf_len);
@@ -201,17 +203,30 @@ smb2_server_negotiate(struct smb2_connection *conn)
 	smb2_tcp_send(p);
 	smb2_packet_delete(p);
 
-	fprintf(stderr, "SESSION SETUP REQUEST...\n");
+	fprintf(stderr, "SESSION SETUP REQUEST 1...\n");
 	p = smb2_packet_new(conn);
 	smb2_tcp_receive(p);
 	smb2_server_parse(p);
 	smb2_packet_delete(p);
 
-	fprintf(stderr, "SESSION SETUP RESPONSE...\n");
+	fprintf(stderr, "SESSION SETUP RESPONSE 1...\n");
 	p = smb2_packet_new(conn);
 	smb2_server_add_command(p, SMB2_SESSION_SETUP);
 	smb2_tcp_send(p);
 	smb2_packet_delete(p);
+
+	fprintf(stderr, "SESSION SETUP REQUEST 2...\n");
+	p = smb2_packet_new(conn);
+	smb2_tcp_receive(p);
+	smb2_server_parse(p);
+	smb2_packet_delete(p);
+
+	fprintf(stderr, "SESSION SETUP RESPONSE 2...\n");
+	p = smb2_packet_new(conn);
+	smb2_server_add_command(p, SMB2_SESSION_SETUP);
+	smb2_tcp_send(p);
+	smb2_packet_delete(p);
+
 
 	return (0);
 }
