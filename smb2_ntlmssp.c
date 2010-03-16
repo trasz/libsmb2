@@ -135,6 +135,14 @@ smb2_ntlmssp_make_negotiate(struct smb2_connection *conn, void **buf, size_t *le
 void
 smb2_ntlmssp_take_challenge(struct smb2_connection *conn, void *buf, size_t len)
 {
+	struct smb2_ntlmssp_challenge *nc;
+
+	if (len < sizeof(*nc))
+		errx(1, "smb2_ntlmssp_take_challenge: buffer too small - %d, should be %d", len, sizeof(*nc));
+
+	nc = (struct smb2_ntlmssp_challenge *)buf;
+	if (memcmp(&(nc->nc_signature), SMB2_NTLMSSP_SIGNATURE, sizeof(nc->nc_signature)) != 0)
+		errx(1, "smb2_ntlmssp_take_challenge: signature doesn't match");
 }
 
 void
@@ -157,6 +165,16 @@ smb2_ntlmssp_make_authenticate(struct smb2_connection *conn, void **buf, size_t 
 void
 smb2_ntlmssp_take_negotiate(struct smb2_connection *conn, void *buf, size_t len)
 {
+	struct smb2_ntlmssp_negotiate *nn;
+
+	if (len < sizeof(*nn))
+		errx(1, "smb2_ntlmssp_take_negotiate: buffer too small - %d, should be %d", len, sizeof(*nn));
+
+	nn = (struct smb2_ntlmssp_negotiate *)buf;
+	if (memcmp(&(nn->nn_signature), SMB2_NTLMSSP_SIGNATURE, sizeof(nn->nn_signature)) != 0)
+		errx(1, "smb2_ntlmssp_take_negotiate: signature doesn't match");
+
+	conn->c_ntlmssp_negotiate_flags = nn->nn_negotiate_flags;
 }
 
 void
@@ -182,6 +200,14 @@ smb2_ntlmssp_make_challenge(struct smb2_connection *conn, void **buf, size_t *le
 void
 smb2_ntlmssp_take_authenticate(struct smb2_connection *conn, void *buf, size_t len)
 {
+	struct smb2_ntlmssp_authenticate *na;
+
+	if (len < sizeof(*na))
+		errx(1, "smb2_ntlmssp_take_authenticate: buffer too small - %d, should be %d", len, sizeof(*na));
+
+	na = (struct smb2_ntlmssp_authenticate *)buf;
+	if (memcmp(&(na->na_signature), SMB2_NTLMSSP_SIGNATURE, sizeof(na->na_signature)) != 0)
+		errx(1, "smb2_ntlmssp_take_authenticate: signature doesn't match");
 }
 
 void
