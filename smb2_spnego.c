@@ -239,21 +239,11 @@ smb2_spnego_take_neg_token_resp(struct smb2_connection *conn, void *buf, size_t 
 void
 smb2_spnego_make_neg_token_init_2(struct smb2_connection *conn, void **buf, size_t *length)
 {
-	struct smb2_der *blob, *nti2, *mech_types, *tmp, *neg_hints, *hint_name;
+	struct smb2_der *blob, *tmp, *hint_name;
+	void *ntlm_buf;
+	size_t ntlm_len;
 
 	/*
-         *                       SEQUENCE:
-         *                               OID: 1.3.6.1.4.1.311.2.2.10
-	 */
-	tmp = smb2_der_new();
-	smb2_der_add_oid(tmp, "1.3.6.1.4.1.311.2.2.10");
-
-	mech_types = smb2_der_new();
-	smb2_der_add_sequence(mech_types, tmp);
-	smb2_der_delete(tmp);
-
-	/*
-         *                       SEQUENCE:
          *                               CONSTRUCTED, id 0xA0:
          *                                       "not_defined_in_RFC4178@please_ignore"
 	 */
@@ -264,21 +254,8 @@ smb2_spnego_make_neg_token_init_2(struct smb2_connection *conn, void **buf, size
 	smb2_der_add_constructed(tmp, hint_name, 0xA0);
 	smb2_der_delete(hint_name);
 
-	neg_hints = smb2_der_new();
-	smb2_der_add_sequence(neg_hints, tmp);
-	smb2_der_delete(tmp);
-
-	/*
-	 * Now put it all together to form NegTokenInit2.
-	 */
-	nti2 = smb2_der_new();
-	smb2_der_add_constructed(nti2, mech_types, 0xA0);
-	smb2_der_delete(mech_types);
-	smb2_der_add_constructed(nti2, neg_hints, 0xA3);
-	smb2_der_delete(neg_hints);
-
-	blob = smb2_spnego_wrap_nti(nti2);
-	smb2_der_delete(nti2);
+	smb2_der_get_buffer(tmp, &ntlm_buf, &ntlm_len);
+	blob = smb2_spnego_wrap_ntlm(0xA3, SMB2_DER_SEQUENCE, ntlm_buf, ntlm_len);
 
 	conn->c_spnego_buf = blob;
 	smb2_der_get_buffer(blob, buf, length);
