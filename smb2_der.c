@@ -132,7 +132,8 @@ smb2_der_get_next_id(struct smb2_der *d, unsigned char *id)
 		return (-1);
 	}
 
-	*id = d->d_buf[d->d_next];
+	if (id != NULL)
+		*id = d->d_buf[d->d_next];
 
 	return (0);
 }
@@ -246,7 +247,8 @@ smb2_der_get_constructed(struct smb2_der *d, unsigned char *identifier)
 		return (NULL);
 
 	c = smb2_der_new_from_buf(&(d->d_buf[d->d_next]), len);
-	*identifier = id;
+	if (identifier != NULL)
+		*identifier = id;
 
 	d->d_next += len;
 
@@ -357,12 +359,18 @@ smb2_der_get_general_string(struct smb2_der *d)
 int
 smb2_der_get_whatever(struct smb2_der *d, unsigned char *id, void **buf, size_t *len)
 {
+	size_t l;
+	unsigned char i;
 
-	if (smb2_der_extract(d, id, len))
+	if (smb2_der_extract(d, &i, &l))
 		return (-1);
+	if (id != NULL)
+		*id = i;
 	if (buf != NULL)
 		*buf = (void *)&(d->d_buf[d->d_next]);
-	d->d_next += *len;
+	if (len != NULL)
+		*len = l;
+	d->d_next += l;
 
 	return (0);
 }
