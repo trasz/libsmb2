@@ -102,11 +102,11 @@ struct smb2_ntlmssp_authenticate {
 /*
  * Possible flags for nn_negotiate_flags.
  */
-#define	SMB2_NTLMSSP_NEGOTIATE_128		1 << 2
-#define	SMB2_NTLMSSP_REQUEST_TARGET		1 << 29
-#define	SMB2_NTLMSSP_NEGOTIATE_NTLM		1 << 22
-#define	SMB2_NTLMSSP_NEGOTIATE_ALWAYS_SIGN	1 << 16
-#define	SMB2_NTLMSSP_NEGOTIATE_UNICODE		1 << 31
+#define	SMB2_NTLMSSP_NEGOTIATE_128		(1 << 2)
+#define	SMB2_NTLMSSP_REQUEST_TARGET		(1 << 29)
+#define	SMB2_NTLMSSP_NEGOTIATE_NTLM		(1 << 22)
+#define	SMB2_NTLMSSP_NEGOTIATE_ALWAYS_SIGN	(1 << 16)
+#define	SMB2_NTLMSSP_NEGOTIATE_UNICODE		(1 << 31)
 
 void
 smb2_ntlmssp_make_negotiate(struct smb2_connection *conn, void **buf, size_t *len)

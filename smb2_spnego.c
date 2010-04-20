@@ -234,6 +234,39 @@ smb2_spnego_take_neg_token_resp(struct smb2_connection *conn, void *buf, size_t 
 	smb2_der_print(blob);
 	smb2_der_delete(blob);
 	conn->c_spnego_state = SMB2_SPNEGO_STATE_GOT_CHALLENGE;
+#if 0
+	struct smb2_der *blob, *result, *mech, *token, *tmp, *tmp2;
+	void *ntlm_buf;
+	size_t ntlm_len;
+	int res = 1;
+
+	smb2_ntlmssp_make_challenge(conn, &ntlm_buf, &ntlm_len);
+
+	result = smb2_der_new();
+	smb2_der_add_whatever(result, 0x0A, &res, 1);
+
+	mech = smb2_der_new();
+	smb2_der_add_oid(mech, "1.3.6.1.4.1.311.2.2.10");
+
+	token = smb2_der_new();
+	smb2_der_add_whatever(token, 0x04, ntlm_buf, ntlm_len);
+
+	tmp = smb2_der_new();
+	smb2_der_add_constructed(tmp, result, 0xA0);
+	smb2_der_delete(result);
+	smb2_der_add_constructed(tmp, mech, 0xA1);
+	smb2_der_delete(mech);
+	smb2_der_add_constructed(tmp, token, 0xA2);
+	smb2_der_delete(token);
+
+	tmp2 = smb2_der_new();
+	smb2_der_add_sequence(tmp2, tmp);
+	smb2_der_delete(tmp);
+
+	blob = smb2_der_new();
+	smb2_der_add_constructed(blob, tmp2, 0xA1);
+	smb2_der_delete(tmp2);
+#endif
 }
 
 void
