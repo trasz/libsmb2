@@ -32,10 +32,12 @@
  * because:
  *
  * 1. MacOS X doesn't seem to support SPNEGO,
- * 2. GSSAPI is horrible and complicated to use, and
- * 3. There are bugs in the Microsoft implementation, making it not quite standard-compliant.
+ * 2. GSSAPI implementations that do support SPNEGO don't neccessarily support NTLMSSP,
+ * 3. GSSAPI is horrible and complicated to use, and
+ * 4. There are bugs in the Microsoft implementation, making it not quite standard-compliant.
  *
- * This version supports only NTLM mechanism.
+ * This version supports only NTLM mechanism, which is what all Windows versions use
+ * for simple login/password authentication.
  */
 
 #include <err.h>
