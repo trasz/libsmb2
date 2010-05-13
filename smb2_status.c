@@ -31,10 +31,19 @@
 
 #include "smb2_status.h"
 
-char *
+const char *
 smb2_strstatus(int32_t status)
 {
 	static char str[256] = { '\0' };
+
+	switch (status) {
+	case SMB2_STATUS_SUCCESS:
+		return ("SUCCESS");
+	case SMB2_STATUS_MORE_PROCESSING_REQUIRED:
+		return ("MORE PROCESSING REQUIRED");
+	case SMB2_STATUS_INVALID_PARAMETER:
+		return ("INVALID PARAMETER");
+	}
 
 	switch (SMB2_STATUS_SEV(status)) {
 	case SMB2_STATUS_SEVERITY_SUCCESS:

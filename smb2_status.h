@@ -32,6 +32,7 @@
 #include <stdint.h>
 
 #define	SMB2_STATUS_SUCCESS				0x00000000
+#define	SMB2_STATUS_INVALID_PARAMETER			0xC000000D
 #define	SMB2_STATUS_MORE_PROCESSING_REQUIRED		0xC0000016
 
 #define	SMB2_STATUS_SEV(s)	((s & 0xC0000000) >> 30)
@@ -45,6 +46,6 @@
 #define	SMB2_STATUS_SEVERITY_WARNING		2
 #define	SMB2_STATUS_SEVERITY_ERROR		3
 
-char	*smb2_strstatus(int32_t status);
+const char	*smb2_strstatus(int32_t status);
 
 #endif /* !SMB2_STATUS_H */
