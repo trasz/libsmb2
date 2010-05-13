@@ -123,10 +123,13 @@ smb2_ntlmssp_make_negotiate(struct smb2_connection *conn, void **buf, size_t *le
 	 * Windows Server 2008 sends 0xe2088297 here.  Flags below are mandatory,
 	 * as defined in [MS-NLMP], 3.1.5.1.1.
 	 */
+#if 0
 	nn->nn_negotiate_flags = SMB2_NTLMSSP_REQUEST_TARGET |
 	    SMB2_NTLMSSP_NEGOTIATE_NTLM | SMB2_NTLMSSP_NEGOTIATE_ALWAYS_SIGN |
 	    SMB2_NTLMSSP_NEGOTIATE_UNICODE;
 	// SMB2_NTLMSSP_NEGOTIATE_EXTENDED_SESSIONSECURITY?
+#endif
+	nn->nn_negotiate_flags = 0xe2088297;
 
 	*buf = nn;
 	*len = sizeof(*nn);
