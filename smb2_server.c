@@ -95,7 +95,7 @@ smb2_packet_add_ssres(struct smb2_packet *p)
 	/* -1, because size includes one byte of the security buffer. */
 	p->p_buf_len += sizeof(*ssres) - 1;
 	
-	ssres->ssres_structure_size = SMB2_SSREQ_STRUCTURE_SIZE;
+	ssres->ssres_structure_size = SMB2_SSRES_STRUCTURE_SIZE;
 	ssres->ssres_session_flags = 0;
 
 	smb2_spnego_make_neg_token_resp(p->p_conn, &buf, &len);
