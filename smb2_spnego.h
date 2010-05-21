@@ -41,9 +41,8 @@ void	smb2_spnego_take_neg_token_resp(struct smb2_connection *conn, void *buf, si
 /*
  * Server-side routines.
  */
-void	smb2_spnego_make_neg_token_init_2(struct smb2_connection *conn, void **buf, size_t *length);
-void	smb2_spnego_take_neg_token_init(struct smb2_connection *conn, void *buf, size_t length);
-void	smb2_spnego_make_neg_token_resp(struct smb2_connection *conn, void **buf, size_t *length);
+void	smb2_spnego_server_make(struct smb2_connection *conn, void **buf, size_t *length);
+int	smb2_spnego_server_take(struct smb2_connection *conn, void *buf, size_t length);
 
 /*
  * Called after smb2_spnego_make_whatever(), to free c_spnego_context.

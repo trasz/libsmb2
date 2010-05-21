@@ -50,9 +50,14 @@
 #include "smb2_der.h"
 #include "smb2_ntlmssp.h"
 #include "smb2_spnego.h"
+#include "smb2_status.h"
 
-#define	SMB2_SPNEGO_STATE_BEGIN		0
-#define	SMB2_SPNEGO_STATE_GOT_CHALLENGE	1
+#define	SMB2_SPNEGO_STATE_BEGIN			0
+#define	SMB2_SPNEGO_STATE_GOT_CHALLENGE		1
+
+#define	SMB2_SPNEGO_SERVER_STATE_NOTHING_DONE	0
+#define	SMB2_SPNEGO_SERVER_STATE_NTI2_DONE	1
+#define	SMB2_SPNEGO_SERVER_STATE_NTR_DONE	2
 
 static struct smb2_der *
 smb2_spnego_get_gss(struct smb2_der *d)
@@ -271,7 +276,7 @@ smb2_spnego_take_neg_token_resp(struct smb2_connection *conn, void *buf, size_t 
 #endif
 }
 
-void
+static void
 smb2_spnego_make_neg_token_init_2(struct smb2_connection *conn, void **buf, size_t *length)
 {
 	struct smb2_der *blob, *tmp, *hint_name;
@@ -296,7 +301,7 @@ smb2_spnego_make_neg_token_init_2(struct smb2_connection *conn, void **buf, size
 	smb2_der_get_buffer(blob, buf, length);
 }
 
-void
+static void
 smb2_spnego_take_neg_token_init(struct smb2_connection *conn, void *buf, size_t length)
 {
 	struct smb2_der *blob, *nti, *mech_types, *tmp, *negotiate;
@@ -329,7 +334,18 @@ smb2_spnego_take_neg_token_init(struct smb2_connection *conn, void *buf, size_t 
 	smb2_der_delete(blob);
 }
 
-void
+int
+smb2_spnego_server_take(struct smb2_connection *conn, void *buf, size_t length)
+{
+	/* XXX */
+	if (conn->c_spnego_state == SMB2_SPNEGO_SERVER_STATE_NTR_DONE)
+		return (SMB2_STATUS_SUCCESS);
+
+	smb2_spnego_take_neg_token_init(conn, buf, length);
+	return (SMB2_STATUS_MORE_PROCESSING_REQUIRED);
+}
+
+static void
 smb2_spnego_make_neg_token_resp(struct smb2_connection *conn, void **buf, size_t *length)
 {
 	struct smb2_der *blob, *result, *mech, *token, *tmp, *tmp2;
@@ -366,6 +382,27 @@ smb2_spnego_make_neg_token_resp(struct smb2_connection *conn, void **buf, size_t
 
 	conn->c_spnego_buf = blob;
 	smb2_der_get_buffer(blob, buf, length);
+}
+
+void
+smb2_spnego_server_make(struct smb2_connection *conn, void **buf, size_t *length)
+{
+
+	switch (conn->c_spnego_state) {
+	case SMB2_SPNEGO_SERVER_STATE_NOTHING_DONE:
+		smb2_spnego_make_neg_token_init_2(conn, buf, length);
+		conn->c_spnego_state = SMB2_SPNEGO_SERVER_STATE_NTI2_DONE;
+		break;
+	case SMB2_SPNEGO_SERVER_STATE_NTI2_DONE:
+		smb2_spnego_make_neg_token_resp(conn, buf, length);
+		conn->c_spnego_state = SMB2_SPNEGO_SERVER_STATE_NTR_DONE;
+		break;
+	case SMB2_SPNEGO_SERVER_STATE_NTR_DONE:
+		/* XXX: Make an OK reply; this is the response to NTLM AUTHENTICATE. */
+		break;
+	default:
+		errx(1, "smb2_spnego_server_make: invalid spnego state %d", conn->c_spnego_state);
+	}
 }
 
 void

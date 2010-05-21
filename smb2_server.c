@@ -68,7 +68,7 @@ smb2_packet_add_nres(struct smb2_packet *p)
 	nres->nres_max_read_size = 65535;
 	nres->nres_max_write_size = 65535;
 
-	smb2_spnego_make_neg_token_init_2(p->p_conn, &buf, &len);
+	smb2_spnego_server_make(p->p_conn, &buf, &len);
 	/* -1, because size includes one byte of the security buffer. */
 	nres->nres_security_buffer_offset = SMB2_PH_STRUCTURE_SIZE + SMB2_NRES_STRUCTURE_SIZE - 1;
 	memcpy(p->p_buf + nres->nres_security_buffer_offset, buf, len);
@@ -102,7 +102,7 @@ smb2_packet_add_ssres(struct smb2_packet *p)
 	ssres->ssres_structure_size = SMB2_SSRES_STRUCTURE_SIZE;
 	ssres->ssres_session_flags = 0;
 
-	smb2_spnego_make_neg_token_resp(p->p_conn, &buf, &len);
+	smb2_spnego_server_make(p->p_conn, &buf, &len);
 	/* -1, because size includes one byte of the security buffer. */
 	ssres->ssres_security_buffer_offset = SMB2_PH_STRUCTURE_SIZE + SMB2_SSRES_STRUCTURE_SIZE - 1;
 	memcpy(p->p_buf + ssres->ssres_security_buffer_offset, buf, len);
@@ -170,6 +170,7 @@ static void
 smb2_parse_ssreq(struct smb2_packet *p)
 {
 	struct smb2_session_setup_request *ssreq;
+	int status;
 
 	if (p->p_buf_len < SMB2_PH_STRUCTURE_SIZE + SMB2_SSREQ_STRUCTURE_SIZE)
 		errx(1, "smb2_parse_ssreq: received packet too small (%d)", p->p_buf_len);
@@ -186,7 +187,9 @@ smb2_parse_ssreq(struct smb2_packet *p)
 	if (ssreq->ssreq_security_buffer_offset + ssreq->ssreq_security_buffer_length > p->p_buf_len)
 		errx(1, "smb2_parse_ssreq: security buffer (%d) longer than packet (%d)", ssreq->ssreq_security_buffer_length, p->p_buf_len);
 
-	smb2_spnego_take_neg_token_init(p->p_conn, p->p_buf + ssreq->ssreq_security_buffer_offset, ssreq->ssreq_security_buffer_length);
+	status = smb2_spnego_server_take(p->p_conn, p->p_buf + ssreq->ssreq_security_buffer_offset, ssreq->ssreq_security_buffer_length);
+	if (status == SMB2_STATUS_SUCCESS)
+		smb2_server_new_state(p, SMB2_STATE_SESSION_SETUP_DONE);
 
 	smb2_server_reply(p, SMB2_SESSION_SETUP);
 }
