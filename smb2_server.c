@@ -28,6 +28,7 @@
 
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#include <assert.h>
 #include <err.h>
 #include <limits.h>
 #include <netdb.h>
@@ -88,23 +89,30 @@ smb2_packet_add_ssres(struct smb2_packet *p)
 
 	ph = smb2_packet_add_header_sync(p);
 	ph->ph_command = SMB2_SESSION_SETUP;
-	ph->ph_status = SMB2_STATUS_MORE_PROCESSING_REQUIRED;
+	if (p->p_conn->c_state != SMB2_STATE_SESSION_SETUP_DONE)
+		ph->ph_status = SMB2_STATUS_MORE_PROCESSING_REQUIRED;
+	else
+		ph->ph_status = SMB2_STATUS_SUCCESS;
 	ph->ph_flags |= SMB2_FLAGS_SERVER_TO_REDIR;
 
 	ssres = (struct smb2_session_setup_response *)(p->p_buf + p->p_buf_len);
-	/* -1, because size includes one byte of the security buffer. */
-	p->p_buf_len += sizeof(*ssres) - 1;
+	p->p_buf_len += sizeof(*ssres);
 	
 	ssres->ssres_structure_size = SMB2_SSRES_STRUCTURE_SIZE;
 	ssres->ssres_session_flags = 0;
 
-	smb2_spnego_make_neg_token_resp(p->p_conn, &buf, &len);
-	/* -1, because size includes one byte of the security buffer. */
-	ssres->ssres_security_buffer_offset = SMB2_PH_STRUCTURE_SIZE + SMB2_SSRES_STRUCTURE_SIZE - 1;
-	memcpy(p->p_buf + ssres->ssres_security_buffer_offset, buf, len);
-	ssres->ssres_security_buffer_length = len;
-	p->p_buf_len += len;
-	smb2_spnego_done(p->p_conn);
+	if (p->p_conn->c_state != SMB2_STATE_SESSION_SETUP_DONE) {
+		/* --, because size includes one byte of the security buffer. */
+		p->p_buf_len--;
+
+		smb2_spnego_make_neg_token_resp(p->p_conn, &buf, &len);
+		/* -1, because size includes one byte of the security buffer. */
+		ssres->ssres_security_buffer_offset = SMB2_PH_STRUCTURE_SIZE + SMB2_SSRES_STRUCTURE_SIZE - 1;
+		memcpy(p->p_buf + ssres->ssres_security_buffer_offset, buf, len);
+		ssres->ssres_security_buffer_length = len;
+		p->p_buf_len += len;
+		smb2_spnego_done(p->p_conn);
+	}
 
 	return (ssres);
 }
@@ -126,6 +134,29 @@ smb2_server_add_command(struct smb2_packet *p, int cmd)
 }
 
 static void
+smb2_server_reply(const struct smb2_packet *request, int cmd)
+{
+	struct smb2_packet *p;
+
+	fprintf(stderr, "SEND...\n");
+	p = smb2_packet_new(request->p_conn);
+	smb2_server_add_command(p, cmd);
+	smb2_tcp_send(p);
+	smb2_packet_delete(p);
+	fprintf(stderr, "SENT.\n");
+}
+
+static void
+smb2_server_new_state(struct smb2_packet *p, int state)
+{
+
+	assert(state >= p->p_conn->c_state);
+
+	fprintf(stderr, "state %d -> %d\n", p->p_conn->c_state, state);
+	p->p_conn->c_state = state;
+}
+
+static void
 smb2_parse_nreq(struct smb2_packet *p)
 {
 	struct smb2_negotiate_request *nreq;
@@ -134,6 +165,9 @@ smb2_parse_nreq(struct smb2_packet *p)
 		errx(1, "smb2_parse_nreq: received packet too small (%d)", p->p_buf_len);
 
 	nreq = (struct smb2_negotiate_request *)(p->p_buf + SMB2_PH_STRUCTURE_SIZE);
+
+	smb2_server_reply(p, SMB2_NEGOTIATE);
+	smb2_server_new_state(p, SMB2_STATE_NEGOTIATE_DONE);
 }
 
 static void
@@ -157,13 +191,37 @@ smb2_parse_ssreq(struct smb2_packet *p)
 		errx(1, "smb2_parse_ssreq: security buffer (%d) longer than packet (%d)", ssreq->ssreq_security_buffer_length, p->p_buf_len);
 
 	smb2_spnego_take_neg_token_init(p->p_conn, p->p_buf + ssreq->ssreq_security_buffer_offset, ssreq->ssreq_security_buffer_length);
+
+	smb2_server_reply(p, SMB2_SESSION_SETUP);
 }
+
+static void
+smb2_parse_tcreq(struct smb2_packet *p)
+{
+	struct smb2_tree_connect_request *tcreq;
+
+	if (p->p_buf_len < SMB2_PH_STRUCTURE_SIZE + SMB2_TCREQ_STRUCTURE_SIZE)
+		errx(1, "smb2_parse_tcreq: received packet too small (%d)", p->p_buf_len);
+
+	tcreq = (struct smb2_tree_connect_request *)(p->p_buf + SMB2_PH_STRUCTURE_SIZE);
+}
+
+struct smb2_server_state {
+	int	ss_state;
+	int	ss_command;
+	void	(*ss_parse)(struct smb2_packet *);
+} states[] = {
+	{ SMB2_STATE_NOTHING_DONE, SMB2_NEGOTIATE, smb2_parse_nreq },
+	{ SMB2_STATE_NEGOTIATE_DONE, SMB2_SESSION_SETUP, smb2_parse_ssreq },
+	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_TREE_CONNECT, smb2_parse_tcreq },
+	{ -1, -1, NULL }};
 
 static void
 smb2_server_parse(struct smb2_packet *p)
 {
 	struct smb2_packet_header_sync *ph;
 	bool got_smb1;
+	struct smb2_server_state *s;
 
 	ph = smb2_packet_parse_header(p, &got_smb1);
 	/*
@@ -174,59 +232,31 @@ smb2_server_parse(struct smb2_packet *p)
 	if (ph == NULL)
 		return;
 
-	switch (ph->ph_command) {
-		case SMB2_NEGOTIATE:
-			smb2_parse_nreq(p);
-			break;
-		case SMB2_SESSION_SETUP:
-			smb2_parse_ssreq(p);
-			break;
-		default:
-			errx(1, "smb2_parse_packet_header: unknown command %d", ph->ph_command);
+	for (s = states; s->ss_parse != NULL; s++) {
+		if (s->ss_command != ph->ph_command)
+			continue;
+		if (s->ss_state != p->p_conn->c_state)
+			errx(1, "smb2_server_parse: command %d received in state %d, should be %d", ph->ph_command, p->p_conn->c_state, s->ss_state);
+		(s->ss_parse)(p);
+		return;
 	}
+
+	errx(1, "smb2_server_parse: unknown command %d", ph->ph_command);
 }
 
 static int
-smb2_server_negotiate(struct smb2_connection *conn)
+smb2_serve(struct smb2_connection *conn)
 {
 	struct smb2_packet *p;
 
-	fprintf(stderr, "NEGOTIATE REQUEST...\n");
-	p = smb2_packet_new(conn);
-	smb2_tcp_receive(p);
-	smb2_server_parse(p);
-	smb2_packet_delete(p);
-
-	fprintf(stderr, "NEGOTIATE RESPONSE...\n");
-	p = smb2_packet_new(conn);
-	smb2_server_add_command(p, SMB2_NEGOTIATE);
-	smb2_tcp_send(p);
-	smb2_packet_delete(p);
-
-	fprintf(stderr, "SESSION SETUP REQUEST 1...\n");
-	p = smb2_packet_new(conn);
-	smb2_tcp_receive(p);
-	smb2_server_parse(p);
-	smb2_packet_delete(p);
-
-	fprintf(stderr, "SESSION SETUP RESPONSE 1...\n");
-	p = smb2_packet_new(conn);
-	smb2_server_add_command(p, SMB2_SESSION_SETUP);
-	smb2_tcp_send(p);
-	smb2_packet_delete(p);
-
-	fprintf(stderr, "SESSION SETUP REQUEST 2...\n");
-	p = smb2_packet_new(conn);
-	smb2_tcp_receive(p);
-	smb2_server_parse(p);
-	smb2_packet_delete(p);
-
-	fprintf(stderr, "SESSION SETUP RESPONSE 2...\n");
-	p = smb2_packet_new(conn);
-	smb2_server_add_command(p, SMB2_SESSION_SETUP);
-	smb2_tcp_send(p);
-	smb2_packet_delete(p);
-
+	for (;;) {
+		fprintf(stderr, "RECEIVE...\n");
+		p = smb2_packet_new(conn);
+		smb2_tcp_receive(p);
+		smb2_server_parse(p);
+		smb2_packet_delete(p);
+		fprintf(stderr, "RECEIVED.\n");
+	}
 
 	return (0);
 }
@@ -261,8 +291,9 @@ struct smb2_connection *
 smb2_accept(int fd)
 {
 	struct smb2_connection *conn;
-	int error;
 	pid_t child;
+
+	printf("ACCEPT\n");
 
 	conn = calloc(1, sizeof(*conn));
 	if (conn == NULL)
@@ -282,10 +313,6 @@ smb2_accept(int fd)
 		signal(SIGCHLD, SIG_IGN);
 		return (NULL);
 	}
-
-	error = smb2_server_negotiate(conn);
-	if (error)
-		errx(1, "smb2_negotiate failed");
 
 	return (conn);
 }
@@ -309,13 +336,13 @@ main(int argc, char **argv)
 	fd = smb2_listen();
 
 	for (;;) {
-		printf("ACCEPT\n");
 		conn = smb2_accept(fd);
-		if (conn != NULL) {
-			printf("DISCONNECT\n");
-			smb2_disconnect(conn);
-			exit(0);
-		}
+		if (conn == NULL)
+			continue;
+
+		smb2_serve(conn);
+		smb2_disconnect(conn);
+		exit(0);
 	}
 
 	return (0);

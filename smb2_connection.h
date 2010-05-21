@@ -31,10 +31,15 @@
 
 #include <stdint.h>
 
+#define	SMB2_STATE_NOTHING_DONE		0
+#define	SMB2_STATE_NEGOTIATE_DONE	1
+#define	SMB2_STATE_SESSION_SETUP_DONE	2
+
 struct smb2_connection {
 	int		c_fd;
 	int64_t		c_credits_first;
 	int64_t		c_credits_after_last;
+	int		c_state;
 	int		c_spnego_state;
 	void		*c_spnego_buf;
 	int		c_ntlmssp_negotiate_flags;
