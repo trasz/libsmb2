@@ -96,23 +96,19 @@ smb2_packet_add_ssres(struct smb2_packet *p)
 	ph->ph_flags |= SMB2_FLAGS_SERVER_TO_REDIR;
 
 	ssres = (struct smb2_session_setup_response *)(p->p_buf + p->p_buf_len);
-	p->p_buf_len += sizeof(*ssres);
+	/* -1, because size includes one byte of the security buffer. */
+	p->p_buf_len += sizeof(*ssres) - 1;
 	
 	ssres->ssres_structure_size = SMB2_SSRES_STRUCTURE_SIZE;
 	ssres->ssres_session_flags = 0;
 
-	if (p->p_conn->c_state != SMB2_STATE_SESSION_SETUP_DONE) {
-		/* --, because size includes one byte of the security buffer. */
-		p->p_buf_len--;
-
-		smb2_spnego_make_neg_token_resp(p->p_conn, &buf, &len);
-		/* -1, because size includes one byte of the security buffer. */
-		ssres->ssres_security_buffer_offset = SMB2_PH_STRUCTURE_SIZE + SMB2_SSRES_STRUCTURE_SIZE - 1;
-		memcpy(p->p_buf + ssres->ssres_security_buffer_offset, buf, len);
-		ssres->ssres_security_buffer_length = len;
-		p->p_buf_len += len;
-		smb2_spnego_done(p->p_conn);
-	}
+	smb2_spnego_make_neg_token_resp(p->p_conn, &buf, &len);
+	/* -1, because size includes one byte of the security buffer. */
+	ssres->ssres_security_buffer_offset = SMB2_PH_STRUCTURE_SIZE + SMB2_SSRES_STRUCTURE_SIZE - 1;
+	memcpy(p->p_buf + ssres->ssres_security_buffer_offset, buf, len);
+	ssres->ssres_security_buffer_length = len;
+	p->p_buf_len += len;
+	smb2_spnego_done(p->p_conn);
 
 	return (ssres);
 }
