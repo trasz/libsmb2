@@ -257,7 +257,6 @@ smb2_ntlmssp_make_challenge(struct smb2_connection *conn, void **buf, size_t *le
 	nc->nc_target_name_max_len = nc->nc_target_name_len;
 	nc->nc_target_name_buffer_offset = payload_off;
 
-	printf("payload_off = %zd\n", payload_off);
 	for (i = 0; i < strlen(SMB2_NTLMSSP_HOSTNAME); i++) {
 		*((char *)nc + payload_off++) = *(SMB2_NTLMSSP_HOSTNAME + i);
 		*((char *)nc + payload_off++) = '\0';
