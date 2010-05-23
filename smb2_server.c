@@ -205,24 +205,36 @@ struct smb2_server_state {
 	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_OPLOCK_BREAK, smb2_serve_whatever },
 	{ -1, -1, NULL }};
 
+bool
+smb2_server_smb1_negotiate_received(struct smb2_packet *p)
+{
+	struct smb2_packet_header_sync *ph;
+
+	if (p->p_buf_len < SMB2_PH_STRUCTURE_SIZE) {
+		warnx("smb2_server_smb1_negotiate_received: received packet too small (%d)", p->p_buf_len);
+		return (false);
+	}
+
+	ph = (struct smb2_packet_header_sync *)p->p_buf;
+	if (ph->ph_protocol_id == SMB2_PH_SMB1_PROTOCOL_ID)
+		return (true);
+
+	return (false);
+}
+
 static void
 smb2_server_serve(struct smb2_packet *p)
 {
 	struct smb2_packet_header_sync *ph;
-	bool got_smb1;
 	struct smb2_server_state *s;
 	int command;
 
-	ph = smb2_packet_parse_header(p, &got_smb1);
-	if (ph == NULL && !got_smb1)
-		return;
-
-	/*
-	 * XXX: This is evil.
-	 */
-	if (got_smb1)
+	ph = smb2_packet_parse_header(p);
+	if (ph == NULL) {
+		if (smb2_server_smb1_negotiate_received(p) == false)
+			return;
 		command = SMB2_NEGOTIATE;
-	else
+	} else
 		command = ph->ph_command;
 
 	for (s = states; s->ss_serve != NULL; s++) {

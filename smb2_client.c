@@ -159,7 +159,7 @@ smb2_client_parse(struct smb2_packet *p)
 {
 	struct smb2_packet_header_sync *ph;
 
-	ph = smb2_packet_parse_header(p, NULL);
+	ph = smb2_packet_parse_header(p);
 	if (ph == NULL)
 		return;
 

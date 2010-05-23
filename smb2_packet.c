@@ -58,12 +58,9 @@ smb2_packet_add_header_sync(struct smb2_packet *p)
 }
 
 struct smb2_packet_header_sync *
-smb2_packet_parse_header(struct smb2_packet *p, bool *got_smb1)
+smb2_packet_parse_header(struct smb2_packet *p)
 {
 	struct smb2_packet_header_sync *ph;
-
-	if (got_smb1 != NULL)
-		*got_smb1 = false;
 
 	if (p->p_buf_len < SMB2_PH_STRUCTURE_SIZE) {
 		warnx("smb2_parse_packet_header: received packet too small (%d)", p->p_buf_len);
@@ -73,12 +70,7 @@ smb2_packet_parse_header(struct smb2_packet *p, bool *got_smb1)
 	ph = (struct smb2_packet_header_sync *)p->p_buf;
 
 	if (ph->ph_protocol_id != SMB2_PH_PROTOCOL_ID) {
-		if (ph->ph_protocol_id == SMB2_PH_SMB1_PROTOCOL_ID) {
-			if (got_smb1 != NULL)
-				*got_smb1 = true;
-			warnx("smb2_parse_packet_header: SMB1 protocol id received");
-		} else
-			warnx("smb2_parse_packet_header: invalid protocol id (0x%X)", ph->ph_protocol_id);
+		warnx("smb2_parse_packet_header: invalid protocol id (0x%X)", ph->ph_protocol_id);
 		return (NULL);
 	}
 	if (ph->ph_structure_size != SMB2_PH_STRUCTURE_SIZE) {
