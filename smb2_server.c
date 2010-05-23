@@ -179,11 +179,11 @@ smb2_serve_whatever(struct smb2_packet *req)
 	smb2_packet_delete(res);
 }
 
-struct smb2_server_state {
-	int	ss_state;
-	int	ss_command;
-	void	(*ss_serve)(struct smb2_packet *);
-} states[] = {
+struct smb2_server_command {
+	int	sc_state;
+	int	sc_command;
+	void	(*sc_serve)(struct smb2_packet *);
+} smb2_server_commands[] = {
 	{ SMB2_STATE_NOTHING_DONE, SMB2_NEGOTIATE, smb2_serve_nreq },
 	{ SMB2_STATE_NEGOTIATE_DONE, SMB2_SESSION_SETUP, smb2_serve_ssreq },
 	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_LOGOFF, smb2_serve_whatever },
@@ -226,7 +226,7 @@ static void
 smb2_server_serve(struct smb2_packet *p)
 {
 	struct smb2_packet_header_sync *ph;
-	struct smb2_server_state *s;
+	struct smb2_server_command *c;
 	int command;
 
 	ph = smb2_packet_parse_header(p);
@@ -237,12 +237,12 @@ smb2_server_serve(struct smb2_packet *p)
 	} else
 		command = ph->ph_command;
 
-	for (s = states; s->ss_serve != NULL; s++) {
-		if (s->ss_command != command)
+	for (c = smb2_server_commands; c->sc_serve != NULL; c++) {
+		if (c->sc_command != command)
 			continue;
-		if (s->ss_state != p->p_conn->c_state)
-			errx(1, "smb2_server_serve: command %d received in state %d, should be %d", command, p->p_conn->c_state, s->ss_state);
-		(s->ss_serve)(p);
+		if (c->sc_state != p->p_conn->c_state)
+			errx(1, "smb2_server_serve: command %d received in state %d, should be %d", command, p->p_conn->c_state, c->sc_state);
+		(c->sc_serve)(p);
 		return;
 	}
 
