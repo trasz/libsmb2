@@ -44,8 +44,7 @@ smb2_packet_add_header_sync(struct smb2_packet *p)
 
 	// temporary.
 	assert(p->p_buf_len == 0);
-	ph = (struct smb2_packet_header_sync *)(p->p_buf + p->p_buf_len);
-	p->p_buf_len = sizeof(*ph);
+	ph = (struct smb2_packet_header_sync *)smb2_packet_append(p, SMB2_PH_STRUCTURE_SIZE);
 
 	ph->ph_protocol_id = SMB2_PH_PROTOCOL_ID;
 	ph->ph_structure_size = SMB2_PH_STRUCTURE_SIZE;
@@ -103,10 +102,22 @@ smb2_packet_new(struct smb2_connection *conn)
 	return (p);
 }
 
+void *
+smb2_packet_append(struct smb2_packet *p, size_t length)
+{
+	void *start;
+
+	start = p->p_buf + p->p_buf_len;
+	p->p_buf_len += length;
+	if (p->p_buf_len > SMB2_P_BUF_SIZE)
+		errx(1, "smb2_packet_append: packet too big to fit");
+
+	return (start);
+}
+
 void
 smb2_packet_delete(struct smb2_packet *p)
 {
 
 	free(p);
 }
-

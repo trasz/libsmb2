@@ -70,10 +70,8 @@ smb2_server_error_response(struct smb2_packet *req, int status)
 	struct smb2_error_response *er;
 
 	res = smb2_server_make_response(req, status);
-
-	er = (struct smb2_error_response *)(res->p_buf + res->p_buf_len);
+	er = (struct smb2_error_response *)smb2_packet_append(res, SMB2_ER_STRUCTURE_SIZE);
 	er->er_structure_size = SMB2_ER_STRUCTURE_SIZE;
-	res->p_buf_len += sizeof(*er);
 
 	smb2_tcp_send(res);
 	smb2_packet_delete(res);
@@ -95,23 +93,23 @@ smb2_serve_negotiate(struct smb2_packet *req)
 	struct smb2_packet *res;
 	struct smb2_negotiate_request *nreq;
 	struct smb2_negotiate_response *nres;
-	void *buf;
+	void *buf, *security_buffer;
 	size_t len;
 
 	if (req->p_buf_len < SMB2_PH_STRUCTURE_SIZE + SMB2_NREQ_STRUCTURE_SIZE)
 		errx(1, "smb2_serve_negotiate: received packet too small (%d)", req->p_buf_len);
 
+#ifdef doesnt_work_with_smb1_negotiate
 	nreq = (struct smb2_negotiate_request *)(req->p_buf + SMB2_PH_STRUCTURE_SIZE);
 	if (nreq->nreq_structure_size != SMB2_NREQ_STRUCTURE_SIZE)
 		errx(1, "smb2_serve_negotiate: wrong structure size; should be %zd, is %zd", nreq->nreq_structure_size, SMB2_NREQ_STRUCTURE_SIZE);
+#endif
 
 	smb2_server_new_state(req, SMB2_STATE_NEGOTIATE_DONE);
 
 	res = smb2_server_make_response(req, SMB2_STATUS_SUCCESS);
-	nres = (struct smb2_negotiate_response *)(res->p_buf + res->p_buf_len);
-
 	/* -1, because size includes one byte of the security buffer. */
-	res->p_buf_len += sizeof(*nres) - 1;
+	nres = (struct smb2_negotiate_response *)smb2_packet_append(res, SMB2_NRES_STRUCTURE_SIZE - 1);
 
 	nres->nres_structure_size = SMB2_NRES_STRUCTURE_SIZE;
 	nres->nres_security_mode = SMB2_NRES_NEGOTIATE_SIGNING_ENABLED;
@@ -123,9 +121,9 @@ smb2_serve_negotiate(struct smb2_packet *req)
 	smb2_spnego_server_make(res->p_conn, &buf, &len);
 	/* -1, because size includes one byte of the security buffer. */
 	nres->nres_security_buffer_offset = SMB2_PH_STRUCTURE_SIZE + SMB2_NRES_STRUCTURE_SIZE - 1;
-	memcpy(res->p_buf + nres->nres_security_buffer_offset, buf, len);
 	nres->nres_security_buffer_length = len;
-	res->p_buf_len += len;
+	security_buffer = smb2_packet_append(res, len);
+	memcpy(security_buffer, buf, len);
 	smb2_spnego_done(res->p_conn);
 
 	smb2_tcp_send(res);
@@ -139,7 +137,7 @@ smb2_serve_session_setup(struct smb2_packet *req)
 	struct smb2_session_setup_request *ssreq;
 	struct smb2_session_setup_response *ssres;
 	int status;
-	void *buf;
+	void *buf, *security_buffer;
 	size_t len;
 
 	if (req->p_buf_len < SMB2_PH_STRUCTURE_SIZE + SMB2_SSREQ_STRUCTURE_SIZE)
@@ -166,9 +164,8 @@ smb2_serve_session_setup(struct smb2_packet *req)
 		res = smb2_server_make_response(req, SMB2_STATUS_MORE_PROCESSING_REQUIRED);
 	else
 		res = smb2_server_make_response(req, SMB2_STATUS_SUCCESS);
-	ssres = (struct smb2_session_setup_response *)(res->p_buf + res->p_buf_len);
 	/* -1, because size includes one byte of the security buffer. */
-	res->p_buf_len += sizeof(*ssres) - 1;
+	ssres = (struct smb2_session_setup_response *)smb2_packet_append(res, SMB2_SSRES_STRUCTURE_SIZE - 1);
 
 	ssres->ssres_structure_size = SMB2_SSRES_STRUCTURE_SIZE;
 	ssres->ssres_session_flags = 0;
@@ -176,9 +173,9 @@ smb2_serve_session_setup(struct smb2_packet *req)
 	smb2_spnego_server_make(res->p_conn, &buf, &len);
 	/* -1, because size includes one byte of the security buffer. */
 	ssres->ssres_security_buffer_offset = SMB2_PH_STRUCTURE_SIZE + SMB2_SSRES_STRUCTURE_SIZE - 1;
-	memcpy(res->p_buf + ssres->ssres_security_buffer_offset, buf, len);
 	ssres->ssres_security_buffer_length = len;
-	res->p_buf_len += len;
+	security_buffer = smb2_packet_append(res, len);
+	memcpy(security_buffer, buf, len);
 	smb2_spnego_done(res->p_conn);
 
 	smb2_tcp_send(res);
@@ -214,13 +211,11 @@ smb2_serve_tree_connect(struct smb2_packet *req)
 	}
 
 	res = smb2_server_make_response(req, SMB2_STATUS_SUCCESS);
-	tcres = (struct smb2_tree_connect_response *)(res->p_buf + res->p_buf_len);
+	tcres = (struct smb2_tree_connect_response *)smb2_packet_append(res, SMB2_TCRES_STRUCTURE_SIZE);
 	tcres->tcres_structure_size = SMB2_TCRES_STRUCTURE_SIZE;
 	tcres->tcres_share_type = SMB2_TCRES_SHARE_TYPE_DISK;
 	tcres->tcres_share_flags = SMB2_TCRES_SHAREFLAG_MANUAL_CACHING; /* XXX: Is this the right choice? */
 	/* XXX: tcres_capabilities */
-
-	res->p_buf_len += sizeof(*tcres);
 
 	smb2_tcp_send(res);
 	smb2_packet_delete(res);
@@ -258,9 +253,8 @@ smb2_serve_echo(struct smb2_packet *req)
 		errx(1, "smb2_serve_echo: wrong structure size; should be %zd, is %zd", ereq->ereq_structure_size, SMB2_EREQ_STRUCTURE_SIZE);
 
 	res = smb2_server_make_response(req, SMB2_STATUS_SUCCESS);
-	eres = (struct smb2_echo_response *)(res->p_buf + res->p_buf_len);
+	eres = (struct smb2_echo_response *)smb2_packet_append(res, SMB2_ERES_STRUCTURE_SIZE);
 	eres->eres_structure_size = SMB2_ERES_STRUCTURE_SIZE;
-	res->p_buf_len += sizeof(*eres);
 
 	smb2_tcp_send(res);
 	smb2_packet_delete(res);
