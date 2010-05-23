@@ -384,6 +384,31 @@ smb2_spnego_make_neg_token_resp(struct smb2_connection *conn, void **buf, size_t
 	smb2_der_get_buffer(blob, buf, length);
 }
 
+static void
+smb2_spnego_make_neg_token_resp_ok(struct smb2_connection *conn, void **buf, size_t *length)
+{
+	struct smb2_der *blob, *result, *tmp, *tmp2;
+	int res = 0;
+
+	result = smb2_der_new();
+	smb2_der_add_whatever(result, 0x0A, &res, 1);
+
+	tmp = smb2_der_new();
+	smb2_der_add_constructed(tmp, result, 0xA0);
+	smb2_der_delete(result);
+
+	tmp2 = smb2_der_new();
+	smb2_der_add_sequence(tmp2, tmp);
+	smb2_der_delete(tmp);
+
+	blob = smb2_der_new();
+	smb2_der_add_constructed(blob, tmp2, 0xA1);
+	smb2_der_delete(tmp2);
+
+	conn->c_spnego_buf = blob;
+	smb2_der_get_buffer(blob, buf, length);
+}
+
 void
 smb2_spnego_server_make(struct smb2_connection *conn, void **buf, size_t *length)
 {
@@ -398,7 +423,7 @@ smb2_spnego_server_make(struct smb2_connection *conn, void **buf, size_t *length
 		conn->c_spnego_state = SMB2_SPNEGO_SERVER_STATE_NTR_DONE;
 		break;
 	case SMB2_SPNEGO_SERVER_STATE_NTR_DONE:
-		/* XXX: Make an OK reply; this is the response to NTLM AUTHENTICATE. */
+		smb2_spnego_make_neg_token_resp_ok(conn, buf, length);
 		break;
 	default:
 		errx(1, "smb2_spnego_server_make: invalid spnego state %d", conn->c_spnego_state);
