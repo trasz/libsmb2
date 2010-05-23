@@ -71,6 +71,8 @@ smb2_unicode_to_utf8(void *buf, size_t len)
 	if (converted == (size_t)-1)
 		err(1, "smb2_unicode_to_utf8: iconv");
 
+	*outbuf = '\0';
+
 	/* Reset conversion state. */
 	converted = iconv(smb2_unicode_cd_to_utf8, NULL, NULL, NULL, NULL);
 	if (converted == (size_t)-1)
