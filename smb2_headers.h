@@ -45,34 +45,34 @@
 #endif
 
 struct smb2_packet_header_async {
-	int32_t	ph_protocol_id;
-	int16_t	ph_structure_size;
-	int16_t	ph_credit_charge;
-	int32_t	ph_status;
-	int16_t	ph_command;
-	int16_t	ph_credit_request_response;
-	int32_t	ph_flags;
-	int32_t	ph_next_command;
-	int64_t	ph_message_id;
-	int64_t	ph_async_id;
-	int64_t	ph_session_id;
-	int8_t	ph_signature[16];
+	uint32_t	ph_protocol_id;
+	uint16_t	ph_structure_size;
+	uint16_t	ph_credit_charge;
+	uint32_t	ph_status;
+	uint16_t	ph_command;
+	uint16_t	ph_credit_request_response;
+	uint32_t	ph_flags;
+	uint32_t	ph_next_command;
+	uint64_t	ph_message_id;
+	uint64_t	ph_async_id;
+	uint64_t	ph_session_id;
+	uint8_t		ph_signature[16];
 } ATTRIBUTE_PACKED;
 
 struct smb2_packet_header_sync {
-	int32_t	ph_protocol_id;
-	int16_t	ph_structure_size;
-	int16_t	ph_credit_charge;
-	int32_t	ph_status;
-	int16_t	ph_command;
-	int16_t	ph_credit_request_response;
-	int32_t	ph_flags;
-	int32_t	ph_next_command;
-	int64_t	ph_message_id;
-	int32_t	ph_process_id;
-	int32_t	ph_tree_id;
-	int64_t	ph_session_id;
-	int8_t	ph_signature[16];
+	uint32_t	ph_protocol_id;
+	uint16_t	ph_structure_size;
+	uint16_t	ph_credit_charge;
+	uint32_t	ph_status;
+	uint16_t	ph_command;
+	uint16_t	ph_credit_request_response;
+	uint32_t	ph_flags;
+	uint32_t	ph_next_command;
+	uint64_t	ph_message_id;
+	uint32_t	ph_process_id;
+	uint32_t	ph_tree_id;
+	uint64_t	ph_session_id;
+	uint8_t		ph_signature[16];
 } ATTRIBUTE_PACKED;
 
 #define	SMB2_PH_PROTOCOL_ID		0x424D53FE /* 0xFE 'S' 'M' 'B', reversed */
@@ -110,27 +110,27 @@ CTASSERT(sizeof(struct smb2_packet_header_sync) == SMB2_PH_STRUCTURE_SIZE);
 #define	SMB2_PH_PROCESS_ID_NONE		0xFEFF
 
 struct smb2_error_response {
-	int16_t	er_structure_size;
-	int16_t	er_reserved;
-	int32_t	er_bytecount;
-	int8_t	er_errordata[1];
+	uint16_t	er_structure_size;
+	uint16_t	er_reserved;
+	uint32_t	er_bytecount;
+	uint8_t		er_errordata[1];
 } ATTRIBUTE_PACKED;
 
 #define	SMB2_ER_STRUCTURE_SIZE		9
 CTASSERT(sizeof(struct smb2_error_response) == SMB2_ER_STRUCTURE_SIZE);
 
 struct smb2_symbolic_link_error_response {
-	int32_t	sler_sym_link_length;
-	int32_t	sler_sym_link_error_tag;
-	int32_t	sler_reparse_tag;
-	int16_t	sler_reparse_data_length;
-	int16_t	sler_unparsed_path_length;
-	int16_t	sler_substitute_name_offset;
-	int16_t	sler_substitute_name_length;
-	int16_t	sler_print_name_offset;
-	int16_t	sler_print_name_length;
-	int32_t	sler_flags;
-	int8_t	sler_path_buffer;
+	uint32_t	sler_sym_link_length;
+	uint32_t	sler_sym_link_error_tag;
+	uint32_t	sler_reparse_tag;
+	uint16_t	sler_reparse_data_length;
+	uint16_t	sler_unparsed_path_length;
+	uint16_t	sler_substitute_name_offset;
+	uint16_t	sler_substitute_name_length;
+	uint16_t	sler_print_name_offset;
+	uint16_t	sler_print_name_length;
+	uint32_t	sler_flags;
+	uint8_t		sler_path_buffer;
 } ATTRIBUTE_PACKED;
 
 #define	SMB2_SLER_SYM_LINK_ERROR_TAG	0x4C4D5953
@@ -138,14 +138,14 @@ struct smb2_symbolic_link_error_response {
 #define	SMB2_SLER_SYMLINK_FLAG_RELATIVE	0x00000001
 
 struct smb2_negotiate_request {
-	int16_t	nreq_structure_size;
-	int16_t	nreq_dialect_count;
-	int16_t	nreq_security_mode;
-	int16_t	nreq_reserved;
-	int32_t	nreq_capabilities;
-	int8_t	nreq_client_guid[16];
-	int64_t	nreq_client_start_time;
-	int32_t	nreq_dialects[0];
+	uint16_t	nreq_structure_size;
+	uint16_t	nreq_dialect_count;
+	uint16_t	nreq_security_mode;
+	uint16_t	nreq_reserved;
+	uint32_t	nreq_capabilities;
+	uint8_t		nreq_client_guid[16];
+	uint64_t	nreq_client_start_time;
+	uint32_t	nreq_dialects[0];
 } ATTRIBUTE_PACKED;
 
 #define	SMB2_NREQ_STRUCTURE_SIZE		36
@@ -155,21 +155,21 @@ CTASSERT(sizeof(struct smb2_negotiate_request) == SMB2_NREQ_STRUCTURE_SIZE);
 #define	SMB2_NREQ_GLOBAL_CAP_DFS		0x00000001
 
 struct smb2_negotiate_response {
-	int16_t	nres_structure_size;
-	int16_t	nres_security_mode;
-	int16_t	nres_dialect_revision;
-	int16_t	nres_reserved;
-	int8_t	nres_server_guid[16];
-	int32_t	nres_capabilities;
-	int32_t	nres_max_transact_size;
-	int32_t	nres_max_read_size;
-	int32_t	nres_max_write_size;
-	int64_t	nres_system_time;
-	int64_t	nres_server_start_time;
-	int16_t	nres_security_buffer_offset;
-	int16_t	nres_security_buffer_length;
-	int32_t	nres_reserved2;
-	int8_t	nres_buffer[1];
+	uint16_t	nres_structure_size;
+	uint16_t	nres_security_mode;
+	uint16_t	nres_dialect_revision;
+	uint16_t	nres_reserved;
+	uint8_t		nres_server_guid[16];
+	uint32_t	nres_capabilities;
+	uint32_t	nres_max_transact_size;
+	uint32_t	nres_max_read_size;
+	uint32_t	nres_max_write_size;
+	uint64_t	nres_system_time;
+	uint64_t	nres_server_start_time;
+	uint16_t	nres_security_buffer_offset;
+	uint16_t	nres_security_buffer_length;
+	uint32_t	nres_reserved2;
+	uint8_t		nres_buffer[1];
 } ATTRIBUTE_PACKED;
 
 #define	SMB2_NRES_STRUCTURE_SIZE		65
@@ -181,15 +181,15 @@ CTASSERT(sizeof(struct smb2_negotiate_response) == SMB2_NRES_STRUCTURE_SIZE);
 #define	SMB2_NRES_GLOBAL_CAP_LARGE_MTU		0x00000004
 
 struct smb2_session_setup_request {
-	int16_t	ssreq_structure_size;
-	int8_t	ssreq_vc_number;
-	int8_t	ssreq_security_mode;
-	int32_t	ssreq_capabilities;
-	int32_t	ssreq_channel;
-	int16_t	ssreq_security_buffer_offset;
-	int16_t	ssreq_security_buffer_length;
-	int64_t	ssreq_previous_session_id;
-	int8_t	ssreq_buffer[1];
+	uint16_t	ssreq_structure_size;
+	uint8_t		ssreq_vc_number;
+	uint8_t		ssreq_security_mode;
+	uint32_t	ssreq_capabilities;
+	uint32_t	ssreq_channel;
+	uint16_t	ssreq_security_buffer_offset;
+	uint16_t	ssreq_security_buffer_length;
+	uint64_t	ssreq_previous_session_id;
+	uint8_t		ssreq_buffer[1];
 } ATTRIBUTE_PACKED;
 
 #define	SMB2_SSREQ_STRUCTURE_SIZE		25
@@ -202,11 +202,11 @@ CTASSERT(sizeof(struct smb2_session_setup_request) == SMB2_SSREQ_STRUCTURE_SIZE)
 #define	SMB2_SSREQ_GLOBAL_CAP_UNUSED3		0x00000000
 
 struct smb2_session_setup_response {
-	int16_t	ssres_structure_size;
-	int16_t	ssres_session_flags;
-	int16_t	ssres_security_buffer_offset;
-	int16_t	ssres_security_buffer_length;
-	int8_t	ssres_buffer[1];
+	uint16_t	ssres_structure_size;
+	uint16_t	ssres_session_flags;
+	uint16_t	ssres_security_buffer_offset;
+	uint16_t	ssres_security_buffer_length;
+	uint8_t		ssres_buffer[1];
 } ATTRIBUTE_PACKED;
 
 #define	SMB2_SSRES_STRUCTURE_SIZE		9
@@ -215,39 +215,39 @@ CTASSERT(sizeof(struct smb2_session_setup_response) == SMB2_SSRES_STRUCTURE_SIZE
 #define	SMB2_SSRES_SESSION_FLAG_IS_NULL		0x002
 
 struct smb2_logoff_request {
-	int16_t	lreq_structure_size;
-	int16_t	lreq_reserved;
+	uint16_t	lreq_structure_size;
+	uint16_t	lreq_reserved;
 } ATTRIBUTE_PACKED;
 
 #define	SMB2_LREQ_STRUCTURE_SIZE		4
 CTASSERT(sizeof(struct smb2_logoff_request) == SMB2_LREQ_STRUCTURE_SIZE);
 
 struct smb2_logoff_response {
-	int16_t	lres_structure_size;
-	int16_t	lres_reserved;
+	uint16_t	lres_structure_size;
+	uint16_t	lres_reserved;
 } ATTRIBUTE_PACKED;
 
 #define	SMB2_LRES_STRUCTURE_SIZE		4
 CTASSERT(sizeof(struct smb2_logoff_response) == SMB2_LRES_STRUCTURE_SIZE);
 
 struct smb2_tree_connect_request {
-	int16_t	tcreq_structure_size;
-	int16_t	tcreq_reserved;
-	int16_t	tcreq_path_offset;
-	int16_t	tcreq_path_length;
-	int8_t	tcreq_buffer[1];
+	uint16_t	tcreq_structure_size;
+	uint16_t	tcreq_reserved;
+	uint16_t	tcreq_path_offset;
+	uint16_t	tcreq_path_length;
+	uint8_t		tcreq_buffer[1];
 } ATTRIBUTE_PACKED;
 
 #define	SMB2_TCREQ_STRUCTURE_SIZE		9
 CTASSERT(sizeof(struct smb2_tree_connect_request) == SMB2_TCREQ_STRUCTURE_SIZE);
 
 struct smb2_tree_connect_response {
-	int16_t	tcres_structure_size;
-	int8_t	tcres_share_type;
-	int8_t	tcres_reserved;
-	int32_t	tcres_share_flags;
-	int32_t	tcres_capabilities;
-	int32_t	tcres_maximal_access;
+	uint16_t	tcres_structure_size;
+	uint8_t		tcres_share_type;
+	uint8_t		tcres_reserved;
+	uint32_t	tcres_share_flags;
+	uint32_t	tcres_capabilities;
+	uint32_t	tcres_maximal_access;
 } ATTRIBUTE_PACKED;
 
 #define	SMB2_TCRES_STRUCTURE_SIZE			16
@@ -269,164 +269,164 @@ CTASSERT(sizeof(struct smb2_tree_connect_response) == SMB2_TCRES_STRUCTURE_SIZE)
 #define	SMB2_TCRES_SHARE_CAP_DFS			0x00000008
 
 struct smb2_tree_disconnect_request {
-	int16_t	tdreq_structure_size;
-	int16_t	tdreq_reserved;
+	uint16_t	tdreq_structure_size;
+	uint16_t	tdreq_reserved;
 } ATTRIBUTE_PACKED;
 
 #define	SMB2_TDREQ_STRUCTURE_SIZE			4
 CTASSERT(sizeof(struct smb2_tree_disconnect_request) == SMB2_TDREQ_STRUCTURE_SIZE);
 
 struct smb2_tree_disconnect_response {
-	int16_t	tdres_structure_size;
-	int16_t	tdres_reserved;
+	uint16_t	tdres_structure_size;
+	uint16_t	tdres_reserved;
 } ATTRIBUTE_PACKED;
 
 #define	SMB2_TDRES_STRUCTURE_SIZE			4
 CTASSERT(sizeof(struct smb2_tree_disconnect_response) == SMB2_TDRES_STRUCTURE_SIZE);
 
 struct smb2_create_request {
-	int16_t creq_structure_size;
-	int8_t	creq_security_flags;
-	int8_t	creq_requested_oplock_level;
-	int32_t	creq_impersonation_level;
-	int64_t	creq_smb_create_flags;
-	int64_t	creq_reserved;
-	int32_t	creq_desired_access;
-	int32_t	creq_file_attributes;
-	int32_t	creq_share_access;
-	int32_t	creq_create_disposition;
-	int32_t	creq_create_options;
-	int16_t	creq_name_offset;
-	int16_t	creq_name_length;
-	int32_t	creq_create_contexts_offset;
-	int32_t	creq_create_contexts_length;
-	int8_t	creq_buffer[1];
+	uint16_t	creq_structure_size;
+	uint8_t		creq_security_flags;
+	uint8_t		creq_requested_oplock_level;
+	uint32_t	creq_impersonation_level;
+	uint64_t	creq_smb_create_flags;
+	uint64_t	creq_reserved;
+	uint32_t	creq_desired_access;
+	uint32_t	creq_file_attributes;
+	uint32_t	creq_share_access;
+	uint32_t	creq_create_disposition;
+	uint32_t	creq_create_options;
+	uint16_t	creq_name_offset;
+	uint16_t	creq_name_length;
+	uint32_t	creq_create_contexts_offset;
+	uint32_t	creq_create_contexts_length;
+	uint8_t	creq_buffer[1];
 } ATTRIBUTE_PACKED;
 
 #define	SMB2_CREQ_STRUCTURE_SIZE			57
 CTASSERT(sizeof(struct smb2_create_request) == SMB2_CREQ_STRUCTURE_SIZE);
 
 struct smb2_create_response {
-	int16_t cres_structure_size;
-	int8_t	cres_oplock_level;
-	int8_t	cres_reserved;
-	int32_t	cres_create_action;
-	int64_t	cres_creation_time;
-	int64_t	cres_last_access_time;
-	int64_t	cres_last_write_time;
-	int64_t	cres_change_time;
-	int64_t	cres_allocation_size;
-	int64_t	cres_end_of_file;
-	int32_t	cres_file_attributes;
-	int32_t	cres_reserved2;
-	int8_t	cres_file_id[16];
-	int32_t	cres_create_contexts_offset;
-	int32_t	cres_create_contexts_length;
-	int8_t	cres_buffer[1];
+	uint16_t	cres_structure_size;
+	uint8_t		cres_oplock_level;
+	uint8_t		cres_reserved;
+	uint32_t	cres_create_action;
+	uint64_t	cres_creation_time;
+	uint64_t	cres_last_access_time;
+	uint64_t	cres_last_write_time;
+	uint64_t	cres_change_time;
+	uint64_t	cres_allocation_size;
+	uint64_t	cres_end_of_file;
+	uint32_t	cres_file_attributes;
+	uint32_t	cres_reserved2;
+	uint8_t		cres_file_id[16];
+	uint32_t	cres_create_contexts_offset;
+	uint32_t	cres_create_contexts_length;
+	uint8_t		cres_buffer[1];
 } ATTRIBUTE_PACKED;
 
 #define	SMB2_CRES_STRUCTURE_SIZE			89
 CTASSERT(sizeof(struct smb2_create_response) == SMB2_CRES_STRUCTURE_SIZE);
 
 struct smb2_close_request {
-	int16_t	clreq_structure_size;
-	int16_t	clreq_flags;
-	int32_t	clreq_reserved;
-	int8_t	clreq_fileid[16];
+	uint16_t	clreq_structure_size;
+	uint16_t	clreq_flags;
+	uint32_t	clreq_reserved;
+	uint8_t		clreq_fileid[16];
 } ATTRIBUTE_PACKED;
 
 #define	SMB2_CLREQ_STRUCTURE_SIZE			24
 CTASSERT(sizeof(struct smb2_close_request) == SMB2_CLREQ_STRUCTURE_SIZE);
 
 struct smb2_close_response {
-	int16_t	clres_structure_size;
-	int16_t	clres_flags;
-	int32_t	clres_reserved;
-	int64_t	clres_creation_time;
-	int64_t	clres_last_access_time;
-	int64_t	clres_last_write_time;
-	int64_t	clres_change_time;
-	int64_t	clres_allocation_size;
-	int64_t	clres_end_of_file;
-	int32_t	clres_file_attributes;
+	uint16_t	clres_structure_size;
+	uint16_t	clres_flags;
+	uint32_t	clres_reserved;
+	uint64_t	clres_creation_time;
+	uint64_t	clres_last_access_time;
+	uint64_t	clres_last_write_time;
+	uint64_t	clres_change_time;
+	uint64_t	clres_allocation_size;
+	uint64_t	clres_end_of_file;
+	uint32_t	clres_file_attributes;
 } ATTRIBUTE_PACKED;
 
 #define	SMB2_CLRES_STRUCTURE_SIZE			60
 CTASSERT(sizeof(struct smb2_close_response) == SMB2_CLRES_STRUCTURE_SIZE);
 
 struct smb2_flush_request {
-	int16_t	freq_structure_size;
-	int16_t	freq_reserved1;
-	int32_t	freq_reserved2;
-	int8_t	freq_file_id[16];
+	uint16_t	freq_structure_size;
+	uint16_t	freq_reserved1;
+	uint32_t	freq_reserved2;
+	uint8_t		freq_file_id[16];
 } ATTRIBUTE_PACKED;
 
 #define	SMB2_FREQ_STRUCTURE_SIZE			24
 CTASSERT(sizeof(struct smb2_flush_request) == SMB2_FREQ_STRUCTURE_SIZE);
 
 struct smb2_flush_response {
-	int16_t	fres_structure_size;
-	int16_t	fres_reserved;
+	uint16_t	fres_structure_size;
+	uint16_t	fres_reserved;
 } ATTRIBUTE_PACKED;
 
 #define	SMB2_FRES_STRUCTURE_SIZE			4
 CTASSERT(sizeof(struct smb2_flush_response) == SMB2_FRES_STRUCTURE_SIZE);
 
 struct smb2_read_request {
-	int16_t	rreq_structure_size;
-	int8_t	rreq_padding;
-	int8_t	rreq_reserved;
-	int32_t	rreq_length;
-	int64_t	rreq_offset;
-	int8_t	rreq_file_id[16];
-	int32_t	rreq_minimum_count;
-	int32_t	rreq_channel;
-	int32_t	rreq_remaining_bytes;
-	int16_t	rreq_read_channel_info_offset;
-	int16_t	rreq_read_channel_info_length;
-	int8_t	rreq_buffer[1];
+	uint16_t	rreq_structure_size;
+	uint8_t		rreq_padding;
+	uint8_t		rreq_reserved;
+	uint32_t	rreq_length;
+	uint64_t	rreq_offset;
+	uint8_t		rreq_file_id[16];
+	uint32_t	rreq_minimum_count;
+	uint32_t	rreq_channel;
+	uint32_t	rreq_remaining_bytes;
+	uint16_t	rreq_read_channel_info_offset;
+	uint16_t	rreq_read_channel_info_length;
+	uint8_t		rreq_buffer[1];
 } ATTRIBUTE_PACKED;
 
 #define	SMB2_RREQ_STRUCTURE_SIZE			49
 CTASSERT(sizeof(struct smb2_read_request) == SMB2_RREQ_STRUCTURE_SIZE);
 
 struct smb2_read_response {
-	int16_t	rres_structure_size;
-	int8_t	rres_data_offset;
-	int8_t	rres_reserved;
-	int32_t	rres_data_length;
-	int32_t	rres_data_remaining;
-	int32_t	rres_reserved2;
-	int8_t	rres_buffer[1];
+	uint16_t	rres_structure_size;
+	uint8_t		rres_data_offset;
+	uint8_t		rres_reserved;
+	uint32_t	rres_data_length;
+	uint32_t	rres_data_remaining;
+	uint32_t	rres_reserved2;
+	uint8_t		rres_buffer[1];
 } ATTRIBUTE_PACKED;
 
 #define	SMB2_RRES_STRUCTURE_SIZE			17
 CTASSERT(sizeof(struct smb2_read_response) == SMB2_RRES_STRUCTURE_SIZE);
 
 struct smb2_write_request {
-	int16_t	wreq_structure_size;
-	int16_t	wreq_data_offset;
-	int32_t	wreq_length;
-	int64_t	wreq_offset;
-	int8_t	wreq_file_id[16];
-	int32_t	wreq_channel;
-	int32_t	wreq_remaining_bytes;
-	int16_t	wreq_write_channel_info_offset;
-	int16_t	wreq_write_channel_info_length;
-	int32_t	wreq_flags;
-	int8_t	wreq_buffer[1];
+	uint16_t	wreq_structure_size;
+	uint16_t	wreq_data_offset;
+	uint32_t	wreq_length;
+	uint64_t	wreq_offset;
+	uint8_t		wreq_file_id[16];
+	uint32_t	wreq_channel;
+	uint32_t	wreq_remaining_bytes;
+	uint16_t	wreq_write_channel_info_offset;
+	uint16_t	wreq_write_channel_info_length;
+	uint32_t	wreq_flags;
+	uint8_t		wreq_buffer[1];
 } ATTRIBUTE_PACKED;
 
 #define	SMB2_WREQ_STRUCTURE_SIZE			49
 CTASSERT(sizeof(struct smb2_write_request) == SMB2_WREQ_STRUCTURE_SIZE);
 
 struct smb2_write_response {
-	int16_t	wres_structure_size;
-	int16_t	wres_reserved;
-	int32_t	wres_count;
-	int32_t	wres_remaining;
-	int16_t	wres_write_channel_info_offset;
-	int16_t	wres_write_channel_info_length;
+	uint16_t	wres_structure_size;
+	uint16_t	wres_reserved;
+	uint32_t	wres_count;
+	uint32_t	wres_remaining;
+	uint16_t	wres_write_channel_info_offset;
+	uint16_t	wres_write_channel_info_length;
 } ATTRIBUTE_PACKED;
 
 /*
