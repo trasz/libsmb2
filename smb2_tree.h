@@ -26,10 +26,11 @@
  * $Id$
  */
 
-#ifndef SMB2_UNICODE_H
-#define	SMB2_UNICODE_H
+#ifndef SMB2_TREE_H
+#define	SMB2_TREE_H
 
-void	smb2_unicode_init(void);
-char	*smb2_unicode_to_utf8(void *buf, size_t len);
+#include "smb2_connection.h"
 
-#endif /* !SMB2_UNICODE_H */
+int	smb2_tree_connect(struct smb2_connection *conn, char *share);
+
+#endif /* !SMB2_TREE_H */

@@ -44,6 +44,7 @@
 #include "smb2_spnego.h"
 #include "smb2_status.h"
 #include "smb2_tcp.h"
+#include "smb2_tree.h"
 #include "smb2_unicode.h"
 
 static struct smb2_packet *
@@ -60,6 +61,22 @@ smb2_server_make_response(struct smb2_packet *req, int status)
 	resh->ph_flags |= SMB2_FLAGS_SERVER_TO_REDIR;
 
 	return (res);
+}
+
+static void
+smb2_server_error_response(struct smb2_packet *req, int status)
+{
+	struct smb2_packet *res;
+	struct smb2_error_response *er;
+
+	res = smb2_server_make_response(req, status);
+
+	er = (struct smb2_error_response *)(res->p_buf + res->p_buf_len);
+	er->er_structure_size = SMB2_ER_STRUCTURE_SIZE;
+	res->p_buf_len += sizeof(*er);
+
+	smb2_tcp_send(res);
+	smb2_packet_delete(res);
 }
 
 static void
@@ -175,6 +192,7 @@ smb2_serve_tree_connect(struct smb2_packet *req)
 	struct smb2_tree_connect_request *tcreq;
 	struct smb2_tree_connect_response *tcres;
 	char *share;
+	int status;
 
 	if (req->p_buf_len < SMB2_PH_STRUCTURE_SIZE + SMB2_TCREQ_STRUCTURE_SIZE)
 		errx(1, "smb2_serve_tree_connect: received packet too small (%d)", req->p_buf_len);
@@ -187,7 +205,13 @@ smb2_serve_tree_connect(struct smb2_packet *req)
 
 	share = smb2_unicode_to_utf8(req->p_buf + tcreq->tcreq_path_offset, tcreq->tcreq_path_length);
 	printf("smb2_serve_tree_connect: requested share \"%s\"\n", share);
+	status = smb2_tree_connect(req->p_conn, share);
 	free(share);
+
+	if (status != SMB2_STATUS_SUCCESS) {
+		smb2_server_error_response(req, status);
+		return;
+	}
 
 	res = smb2_server_make_response(req, SMB2_STATUS_SUCCESS);
 	tcres = (struct smb2_tree_connect_response *)(res->p_buf + res->p_buf_len);
@@ -245,17 +269,8 @@ smb2_serve_echo(struct smb2_packet *req)
 static void
 smb2_serve_whatever(struct smb2_packet *req)
 {
-	struct smb2_packet *res;
-	struct smb2_error_response *er;
 
-	res = smb2_server_make_response(req, SMB2_STATUS_INVALID_PARAMETER);
-
-	er = (struct smb2_error_response *)(res->p_buf + res->p_buf_len);
-	er->er_structure_size = SMB2_ER_STRUCTURE_SIZE;
-	res->p_buf_len += sizeof(*er);
-
-	smb2_tcp_send(res);
-	smb2_packet_delete(res);
+	smb2_server_error_response(req, SMB2_STATUS_INVALID_PARAMETER);
 }
 
 struct smb2_server_command {
@@ -411,12 +426,10 @@ main(int argc, char **argv)
 			continue;
 
 		for (;;) {
-			fprintf(stderr, "RECEIVE...\n");
 			p = smb2_packet_new(conn);
 			smb2_tcp_receive(p);
 			smb2_server_serve(p);
 			smb2_packet_delete(p);
-			fprintf(stderr, "RECEIVED.\n");
 		}
 
 		smb2_disconnect(conn);

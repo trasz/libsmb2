@@ -27,54 +27,20 @@
  */
 
 /*
- * Unicode handling routines.
+ * Tree (aka share) handling.
  */
 
 #include <err.h>
-#include <iconv.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "smb2_unicode.h"
+#include "smb2_status.h"
+#include "smb2_tree.h"
 
-static iconv_t	smb2_unicode_cd_to_unicode = (iconv_t)-1;
-static iconv_t	smb2_unicode_cd_to_utf8 = (iconv_t)-1;
-
-void
-smb2_unicode_init(void)
+int
+smb2_tree_connect(struct smb2_connection *conn, char *share)
 {
 
-	smb2_unicode_cd_to_unicode = iconv_open("UCS-2LE", "UTF-8");
-	if (smb2_unicode_cd_to_unicode == (iconv_t)-1)
-		errx(1, "smb2_unicode_init failed");
-
-	smb2_unicode_cd_to_utf8 = iconv_open("UTF-8", "UCS-2LE");
-	if (smb2_unicode_cd_to_utf8 == (iconv_t)-1)
-		errx(1, "smb2_unicode_init failed");
-}
-
-char *
-smb2_unicode_to_utf8(void *buf, size_t len)
-{
-	size_t converted;
-	size_t inbuflen = len, outbuflen;
-	char *inbuf = buf, *outbuf, *outbufstart;
-
-	outbuflen = len;
-	/* +1 for trailing '\0'. */
-	outbufstart = outbuf = malloc(outbuflen + 1);
-	if (outbuf == NULL)
-		err(1, "smb2_unicode_to_utf8");
-
-	converted = iconv(smb2_unicode_cd_to_utf8, &inbuf, &inbuflen, &outbuf, &outbuflen);
-	if (converted == (size_t)-1)
-		err(1, "smb2_unicode_to_utf8: iconv");
-
-	/* Reset conversion state. */
-	converted = iconv(smb2_unicode_cd_to_utf8, NULL, NULL, NULL, NULL);
-	if (converted == (size_t)-1)
-		err(1, "smb2_unicode_to_utf8: iconv");
-
-	return (outbufstart);
+	return (SMB2_STATUS_BAD_NETWORK_NAME);
 }

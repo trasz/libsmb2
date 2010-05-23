@@ -43,6 +43,8 @@ smb2_strstatus(int32_t status)
 		return ("MORE PROCESSING REQUIRED");
 	case SMB2_STATUS_INVALID_PARAMETER:
 		return ("INVALID PARAMETER");
+	case SMB2_STATUS_BAD_NETWORK_NAME:
+		return ("BAD NETWORK NAME");
 	}
 
 	switch (SMB2_STATUS_SEV(status)) {
