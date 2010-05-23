@@ -84,6 +84,8 @@ smb2_serve_nreq(struct smb2_packet *req)
 		errx(1, "smb2_serve_nreq: received packet too small (%d)", req->p_buf_len);
 
 	nreq = (struct smb2_negotiate_request *)(req->p_buf + SMB2_PH_STRUCTURE_SIZE);
+	if (nreq->nreq_structure_size != SMB2_NREQ_STRUCTURE_SIZE)
+		errx(1, "smb2_serve_nreq: wrong structure size; should be %zd, is %zd", nreq->nreq_structure_size, SMB2_NREQ_STRUCTURE_SIZE);
 
 	smb2_server_new_state(req, SMB2_STATE_NEGOTIATE_DONE);
 
@@ -133,9 +135,10 @@ smb2_serve_ssreq(struct smb2_packet *req)
 	if (ssreq->ssreq_security_buffer_offset != SMB2_PH_STRUCTURE_SIZE + SMB2_SSREQ_STRUCTURE_SIZE - 1)
 		errx(1, "smb2_serve_ssreq: weird security buffer offset, is %d, should be %d",
 		    ssreq->ssreq_security_buffer_offset, SMB2_PH_STRUCTURE_SIZE + SMB2_SSREQ_STRUCTURE_SIZE);
-
 	if (ssreq->ssreq_security_buffer_offset + ssreq->ssreq_security_buffer_length > req->p_buf_len)
 		errx(1, "smb2_serve_ssreq: security buffer (%d) longer than packet (%d)", ssreq->ssreq_security_buffer_length, req->p_buf_len);
+	if (ssreq->ssreq_structure_size != SMB2_SSREQ_STRUCTURE_SIZE)
+		errx(1, "smb2_serve_ssreq: wrong structure size; should be %zd, is %zd", ssreq->ssreq_structure_size, SMB2_SSREQ_STRUCTURE_SIZE);
 
 	status = smb2_spnego_server_take(req->p_conn, req->p_buf + ssreq->ssreq_security_buffer_offset, ssreq->ssreq_security_buffer_length);
 	if (status == SMB2_STATUS_SUCCESS)
