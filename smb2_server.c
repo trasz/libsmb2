@@ -73,7 +73,7 @@ smb2_server_new_state(struct smb2_packet *p, int state)
 }
 
 static void
-smb2_serve_nreq(struct smb2_packet *req)
+smb2_serve_negotiate(struct smb2_packet *req)
 {
 	struct smb2_packet *res;
 	struct smb2_negotiate_request *nreq;
@@ -82,11 +82,11 @@ smb2_serve_nreq(struct smb2_packet *req)
 	size_t len;
 
 	if (req->p_buf_len < SMB2_PH_STRUCTURE_SIZE + SMB2_NREQ_STRUCTURE_SIZE)
-		errx(1, "smb2_serve_nreq: received packet too small (%d)", req->p_buf_len);
+		errx(1, "smb2_serve_negotiate: received packet too small (%d)", req->p_buf_len);
 
 	nreq = (struct smb2_negotiate_request *)(req->p_buf + SMB2_PH_STRUCTURE_SIZE);
 	if (nreq->nreq_structure_size != SMB2_NREQ_STRUCTURE_SIZE)
-		errx(1, "smb2_serve_nreq: wrong structure size; should be %zd, is %zd", nreq->nreq_structure_size, SMB2_NREQ_STRUCTURE_SIZE);
+		errx(1, "smb2_serve_negotiate: wrong structure size; should be %zd, is %zd", nreq->nreq_structure_size, SMB2_NREQ_STRUCTURE_SIZE);
 
 	smb2_server_new_state(req, SMB2_STATE_NEGOTIATE_DONE);
 
@@ -116,7 +116,7 @@ smb2_serve_nreq(struct smb2_packet *req)
 }
 
 static void
-smb2_serve_ssreq(struct smb2_packet *req)
+smb2_serve_session_setup(struct smb2_packet *req)
 {
 	struct smb2_packet *res;
 	struct smb2_session_setup_request *ssreq;
@@ -126,7 +126,7 @@ smb2_serve_ssreq(struct smb2_packet *req)
 	size_t len;
 
 	if (req->p_buf_len < SMB2_PH_STRUCTURE_SIZE + SMB2_SSREQ_STRUCTURE_SIZE)
-		errx(1, "smb2_serve_ssreq: received packet too small (%d)", req->p_buf_len);
+		errx(1, "smb2_serve_session_setup: received packet too small (%d)", req->p_buf_len);
 
 	ssreq = (struct smb2_session_setup_request *)(req->p_buf + SMB2_PH_STRUCTURE_SIZE);
 
@@ -134,12 +134,12 @@ smb2_serve_ssreq(struct smb2_packet *req)
 	 * -1, because SMB2_SSREQ_STRUCTURE_SIZE includes one byte of the buffer.
 	 */
 	if (ssreq->ssreq_security_buffer_offset != SMB2_PH_STRUCTURE_SIZE + SMB2_SSREQ_STRUCTURE_SIZE - 1)
-		errx(1, "smb2_serve_ssreq: weird security buffer offset, is %d, should be %d",
+		errx(1, "smb2_serve_session_setup: weird security buffer offset, is %d, should be %d",
 		    ssreq->ssreq_security_buffer_offset, SMB2_PH_STRUCTURE_SIZE + SMB2_SSREQ_STRUCTURE_SIZE);
 	if (ssreq->ssreq_security_buffer_offset + ssreq->ssreq_security_buffer_length > req->p_buf_len)
-		errx(1, "smb2_serve_ssreq: security buffer (%d) longer than packet (%d)", ssreq->ssreq_security_buffer_length, req->p_buf_len);
+		errx(1, "smb2_serve_session_setup: security buffer (%d) longer than packet (%d)", ssreq->ssreq_security_buffer_length, req->p_buf_len);
 	if (ssreq->ssreq_structure_size != SMB2_SSREQ_STRUCTURE_SIZE)
-		errx(1, "smb2_serve_ssreq: wrong structure size; should be %zd, is %zd", ssreq->ssreq_structure_size, SMB2_SSREQ_STRUCTURE_SIZE);
+		errx(1, "smb2_serve_session_setup: wrong structure size; should be %zd, is %zd", ssreq->ssreq_structure_size, SMB2_SSREQ_STRUCTURE_SIZE);
 
 	status = smb2_spnego_server_take(req->p_conn, req->p_buf + ssreq->ssreq_security_buffer_offset, ssreq->ssreq_security_buffer_length);
 	if (status == SMB2_STATUS_SUCCESS)
@@ -169,7 +169,7 @@ smb2_serve_ssreq(struct smb2_packet *req)
 }
 
 static void
-smb2_serve_tcreq(struct smb2_packet *req)
+smb2_serve_tree_connect(struct smb2_packet *req)
 {
 	struct smb2_packet *res;
 	struct smb2_tree_connect_request *tcreq;
@@ -177,16 +177,16 @@ smb2_serve_tcreq(struct smb2_packet *req)
 	char *share;
 
 	if (req->p_buf_len < SMB2_PH_STRUCTURE_SIZE + SMB2_TCREQ_STRUCTURE_SIZE)
-		errx(1, "smb2_serve_tcreq: received packet too small (%d)", req->p_buf_len);
+		errx(1, "smb2_serve_tree_connect: received packet too small (%d)", req->p_buf_len);
 
 	tcreq = (struct smb2_tree_connect_request *)(req->p_buf + SMB2_PH_STRUCTURE_SIZE);
 	if (tcreq->tcreq_structure_size != SMB2_TCREQ_STRUCTURE_SIZE)
-		errx(1, "smb2_serve_tcreq: wrong structure size; should be %zd, is %zd", tcreq->tcreq_structure_size, SMB2_TCREQ_STRUCTURE_SIZE);
+		errx(1, "smb2_serve_tree_connect: wrong structure size; should be %zd, is %zd", tcreq->tcreq_structure_size, SMB2_TCREQ_STRUCTURE_SIZE);
 	if (tcreq->tcreq_path_offset + tcreq->tcreq_path_length > req->p_buf_len)
-		errx(1, "smb2_serve_tcreq: security buffer (%d) longer than packet (%d)", tcreq->tcreq_path_length, req->p_buf_len);
+		errx(1, "smb2_serve_tree_connect: security buffer (%d) longer than packet (%d)", tcreq->tcreq_path_length, req->p_buf_len);
 
 	share = smb2_unicode_to_utf8(req->p_buf + tcreq->tcreq_path_offset, tcreq->tcreq_path_length);
-	printf("smb2_serve_tcreq: requested share \"%s\"\n", share);
+	printf("smb2_serve_tree_connect: requested share \"%s\"\n", share);
 	free(share);
 
 	res = smb2_server_make_response(req, SMB2_STATUS_SUCCESS);
@@ -203,16 +203,16 @@ smb2_serve_tcreq(struct smb2_packet *req)
 }
 
 static void
-smb2_serve_careq(struct smb2_packet *req)
+smb2_serve_cancel(struct smb2_packet *req)
 {
 	struct smb2_cancel_request *careq;
 
 	if (req->p_buf_len < SMB2_PH_STRUCTURE_SIZE + SMB2_CAREQ_STRUCTURE_SIZE)
-		errx(1, "smb2_serve_careq: received packet too small (%d)", req->p_buf_len);
+		errx(1, "smb2_serve_cancel: received packet too small (%d)", req->p_buf_len);
 
 	careq = (struct smb2_cancel_request *)(req->p_buf + SMB2_PH_STRUCTURE_SIZE);
 	if (careq->careq_structure_size != SMB2_CAREQ_STRUCTURE_SIZE)
-		errx(1, "smb2_serve_careq: wrong structure size; should be %zd, is %zd", careq->careq_structure_size, SMB2_CAREQ_STRUCTURE_SIZE);
+		errx(1, "smb2_serve_cancel: wrong structure size; should be %zd, is %zd", careq->careq_structure_size, SMB2_CAREQ_STRUCTURE_SIZE);
 
 	/*
 	 * We don't really support CANCEL request.  Here, we're just ignoring it.
@@ -220,18 +220,18 @@ smb2_serve_careq(struct smb2_packet *req)
 }
 
 static void
-smb2_serve_ereq(struct smb2_packet *req)
+smb2_serve_echo(struct smb2_packet *req)
 {
 	struct smb2_packet *res;
 	struct smb2_echo_request *ereq;
 	struct smb2_echo_response *eres;
 
 	if (req->p_buf_len < SMB2_PH_STRUCTURE_SIZE + SMB2_EREQ_STRUCTURE_SIZE)
-		errx(1, "smb2_serve_ereq: received packet too small (%d)", req->p_buf_len);
+		errx(1, "smb2_serve_echo: received packet too small (%d)", req->p_buf_len);
 
 	ereq = (struct smb2_echo_request *)(req->p_buf + SMB2_PH_STRUCTURE_SIZE);
 	if (ereq->ereq_structure_size != SMB2_EREQ_STRUCTURE_SIZE)
-		errx(1, "smb2_serve_ereq: wrong structure size; should be %zd, is %zd", ereq->ereq_structure_size, SMB2_EREQ_STRUCTURE_SIZE);
+		errx(1, "smb2_serve_echo: wrong structure size; should be %zd, is %zd", ereq->ereq_structure_size, SMB2_EREQ_STRUCTURE_SIZE);
 
 	res = smb2_server_make_response(req, SMB2_STATUS_SUCCESS);
 	eres = (struct smb2_echo_response *)(res->p_buf + res->p_buf_len);
@@ -263,10 +263,10 @@ struct smb2_server_command {
 	int	sc_command;
 	void	(*sc_serve)(struct smb2_packet *);
 } smb2_server_commands[] = {
-	{ SMB2_STATE_NOTHING_DONE, SMB2_NEGOTIATE, smb2_serve_nreq },
-	{ SMB2_STATE_NEGOTIATE_DONE, SMB2_SESSION_SETUP, smb2_serve_ssreq },
+	{ SMB2_STATE_NOTHING_DONE, SMB2_NEGOTIATE, smb2_serve_negotiate },
+	{ SMB2_STATE_NEGOTIATE_DONE, SMB2_SESSION_SETUP, smb2_serve_session_setup },
 	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_LOGOFF, smb2_serve_whatever },
-	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_TREE_CONNECT, smb2_serve_tcreq },
+	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_TREE_CONNECT, smb2_serve_tree_connect },
 	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_TREE_DISCONNECT, smb2_serve_whatever },
 	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_CREATE, smb2_serve_whatever },
 	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_CLOSE, smb2_serve_whatever },
@@ -275,8 +275,8 @@ struct smb2_server_command {
 	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_WRITE, smb2_serve_whatever },
 	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_LOCK, smb2_serve_whatever },
 	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_IOCTL, smb2_serve_whatever },
-	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_CANCEL, smb2_serve_careq },
-	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_ECHO, smb2_serve_ereq },
+	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_CANCEL, smb2_serve_cancel },
+	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_ECHO, smb2_serve_echo },
 	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_QUERY_DIRECTORY, smb2_serve_whatever },
 	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_CHANGE_NOTIFY, smb2_serve_whatever },
 	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_QUERY_INFO, smb2_serve_whatever },
