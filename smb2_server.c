@@ -44,6 +44,7 @@
 #include "smb2_spnego.h"
 #include "smb2_status.h"
 #include "smb2_tcp.h"
+#include "smb2_unicode.h"
 
 static struct smb2_packet *
 smb2_server_make_response(struct smb2_packet *req, int status)
@@ -168,6 +169,40 @@ smb2_serve_ssreq(struct smb2_packet *req)
 }
 
 static void
+smb2_serve_tcreq(struct smb2_packet *req)
+{
+	struct smb2_packet *res;
+	struct smb2_tree_connect_request *tcreq;
+	struct smb2_tree_connect_response *tcres;
+	char *share;
+
+	if (req->p_buf_len < SMB2_PH_STRUCTURE_SIZE + SMB2_TCREQ_STRUCTURE_SIZE)
+		errx(1, "smb2_serve_tcreq: received packet too small (%d)", req->p_buf_len);
+
+	tcreq = (struct smb2_tree_connect_request *)(req->p_buf + SMB2_PH_STRUCTURE_SIZE);
+	if (tcreq->tcreq_structure_size != SMB2_TCREQ_STRUCTURE_SIZE)
+		errx(1, "smb2_serve_tcreq: wrong structure size; should be %zd, is %zd", tcreq->tcreq_structure_size, SMB2_TCREQ_STRUCTURE_SIZE);
+	if (tcreq->tcreq_path_offset + tcreq->tcreq_path_length > req->p_buf_len)
+		errx(1, "smb2_serve_tcreq: security buffer (%d) longer than packet (%d)", tcreq->tcreq_path_length, req->p_buf_len);
+
+	share = smb2_unicode_to_utf8(req->p_buf + tcreq->tcreq_path_offset, tcreq->tcreq_path_length);
+	printf("smb2_serve_tcreq: requested share \"%s\"\n", share);
+	free(share);
+
+	res = smb2_server_make_response(req, SMB2_STATUS_SUCCESS);
+	tcres = (struct smb2_tree_connect_response *)(res->p_buf + res->p_buf_len);
+	tcres->tcres_structure_size = SMB2_TCRES_STRUCTURE_SIZE;
+	tcres->tcres_share_type = SMB2_TCRES_SHARE_TYPE_DISK;
+	tcres->tcres_share_flags = SMB2_TCRES_SHAREFLAG_MANUAL_CACHING; /* XXX: Is this the right choice? */
+	/* XXX: tcres_capabilities */
+
+	res->p_buf_len += sizeof(*tcres);
+
+	smb2_tcp_send(res);
+	smb2_packet_delete(res);
+}
+
+static void
 smb2_serve_careq(struct smb2_packet *req)
 {
 	struct smb2_cancel_request *careq;
@@ -231,7 +266,7 @@ struct smb2_server_command {
 	{ SMB2_STATE_NOTHING_DONE, SMB2_NEGOTIATE, smb2_serve_nreq },
 	{ SMB2_STATE_NEGOTIATE_DONE, SMB2_SESSION_SETUP, smb2_serve_ssreq },
 	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_LOGOFF, smb2_serve_whatever },
-	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_TREE_CONNECT, smb2_serve_whatever },
+	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_TREE_CONNECT, smb2_serve_tcreq },
 	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_TREE_DISCONNECT, smb2_serve_whatever },
 	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_CREATE, smb2_serve_whatever },
 	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_CLOSE, smb2_serve_whatever },
@@ -365,6 +400,8 @@ main(int argc, char **argv)
 
 	if (argc != 1)
 		usage();
+
+	smb2_unicode_init();
 
 	fd = smb2_listen();
 
