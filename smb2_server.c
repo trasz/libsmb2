@@ -226,8 +226,11 @@ smb2_server_parse(struct smb2_packet *p)
 	/*
 	 * XXX: This is evil.
 	 */
-	if (got_smb1)
+	if (got_smb1) {
+		smb2_server_reply(p, SMB2_NEGOTIATE);
+		smb2_server_new_state(p, SMB2_STATE_NEGOTIATE_DONE);
 		return;
+	}
 	if (ph == NULL)
 		return;
 
