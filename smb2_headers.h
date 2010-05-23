@@ -116,7 +116,7 @@ struct smb2_error_response {
 	uint8_t		er_errordata[1];
 } ATTRIBUTE_PACKED;
 
-#define	SMB2_ER_STRUCTURE_SIZE		9
+#define	SMB2_ER_STRUCTURE_SIZE			9
 CTASSERT(sizeof(struct smb2_error_response) == SMB2_ER_STRUCTURE_SIZE);
 
 struct smb2_symbolic_link_error_response {
@@ -250,7 +250,7 @@ struct smb2_tree_connect_response {
 	uint32_t	tcres_maximal_access;
 } ATTRIBUTE_PACKED;
 
-#define	SMB2_TCRES_STRUCTURE_SIZE			16
+#define	SMB2_TCRES_STRUCTURE_SIZE		16
 CTASSERT(sizeof(struct smb2_tree_connect_response) == SMB2_TCRES_STRUCTURE_SIZE);
 #define	SMB2_TCRES_SHARE_TYPE_DISK			0x01
 #define	SMB2_TCRES_SHARE_TYPE_PIPE			0x02
@@ -273,7 +273,7 @@ struct smb2_tree_disconnect_request {
 	uint16_t	tdreq_reserved;
 } ATTRIBUTE_PACKED;
 
-#define	SMB2_TDREQ_STRUCTURE_SIZE			4
+#define	SMB2_TDREQ_STRUCTURE_SIZE		4
 CTASSERT(sizeof(struct smb2_tree_disconnect_request) == SMB2_TDREQ_STRUCTURE_SIZE);
 
 struct smb2_tree_disconnect_response {
@@ -281,7 +281,7 @@ struct smb2_tree_disconnect_response {
 	uint16_t	tdres_reserved;
 } ATTRIBUTE_PACKED;
 
-#define	SMB2_TDRES_STRUCTURE_SIZE			4
+#define	SMB2_TDRES_STRUCTURE_SIZE		4
 CTASSERT(sizeof(struct smb2_tree_disconnect_response) == SMB2_TDRES_STRUCTURE_SIZE);
 
 struct smb2_create_request {
@@ -303,7 +303,7 @@ struct smb2_create_request {
 	uint8_t	creq_buffer[1];
 } ATTRIBUTE_PACKED;
 
-#define	SMB2_CREQ_STRUCTURE_SIZE			57
+#define	SMB2_CREQ_STRUCTURE_SIZE		57
 CTASSERT(sizeof(struct smb2_create_request) == SMB2_CREQ_STRUCTURE_SIZE);
 
 struct smb2_create_response {
@@ -325,7 +325,7 @@ struct smb2_create_response {
 	uint8_t		cres_buffer[1];
 } ATTRIBUTE_PACKED;
 
-#define	SMB2_CRES_STRUCTURE_SIZE			89
+#define	SMB2_CRES_STRUCTURE_SIZE		89
 CTASSERT(sizeof(struct smb2_create_response) == SMB2_CRES_STRUCTURE_SIZE);
 
 struct smb2_close_request {
@@ -335,7 +335,7 @@ struct smb2_close_request {
 	uint8_t		clreq_fileid[16];
 } ATTRIBUTE_PACKED;
 
-#define	SMB2_CLREQ_STRUCTURE_SIZE			24
+#define	SMB2_CLREQ_STRUCTURE_SIZE		24
 CTASSERT(sizeof(struct smb2_close_request) == SMB2_CLREQ_STRUCTURE_SIZE);
 
 struct smb2_close_response {
@@ -351,7 +351,7 @@ struct smb2_close_response {
 	uint32_t	clres_file_attributes;
 } ATTRIBUTE_PACKED;
 
-#define	SMB2_CLRES_STRUCTURE_SIZE			60
+#define	SMB2_CLRES_STRUCTURE_SIZE		60
 CTASSERT(sizeof(struct smb2_close_response) == SMB2_CLRES_STRUCTURE_SIZE);
 
 struct smb2_flush_request {
@@ -361,7 +361,7 @@ struct smb2_flush_request {
 	uint8_t		freq_file_id[16];
 } ATTRIBUTE_PACKED;
 
-#define	SMB2_FREQ_STRUCTURE_SIZE			24
+#define	SMB2_FREQ_STRUCTURE_SIZE		24
 CTASSERT(sizeof(struct smb2_flush_request) == SMB2_FREQ_STRUCTURE_SIZE);
 
 struct smb2_flush_response {
@@ -369,7 +369,7 @@ struct smb2_flush_response {
 	uint16_t	fres_reserved;
 } ATTRIBUTE_PACKED;
 
-#define	SMB2_FRES_STRUCTURE_SIZE			4
+#define	SMB2_FRES_STRUCTURE_SIZE		4
 CTASSERT(sizeof(struct smb2_flush_response) == SMB2_FRES_STRUCTURE_SIZE);
 
 struct smb2_read_request {
@@ -387,7 +387,7 @@ struct smb2_read_request {
 	uint8_t		rreq_buffer[1];
 } ATTRIBUTE_PACKED;
 
-#define	SMB2_RREQ_STRUCTURE_SIZE			49
+#define	SMB2_RREQ_STRUCTURE_SIZE		49
 CTASSERT(sizeof(struct smb2_read_request) == SMB2_RREQ_STRUCTURE_SIZE);
 
 struct smb2_read_response {
@@ -400,7 +400,7 @@ struct smb2_read_response {
 	uint8_t		rres_buffer[1];
 } ATTRIBUTE_PACKED;
 
-#define	SMB2_RRES_STRUCTURE_SIZE			17
+#define	SMB2_RRES_STRUCTURE_SIZE		17
 CTASSERT(sizeof(struct smb2_read_response) == SMB2_RRES_STRUCTURE_SIZE);
 
 struct smb2_write_request {
@@ -417,7 +417,7 @@ struct smb2_write_request {
 	uint8_t		wreq_buffer[1];
 } ATTRIBUTE_PACKED;
 
-#define	SMB2_WREQ_STRUCTURE_SIZE			49
+#define	SMB2_WREQ_STRUCTURE_SIZE		49
 CTASSERT(sizeof(struct smb2_write_request) == SMB2_WREQ_STRUCTURE_SIZE);
 
 struct smb2_write_response {
@@ -432,7 +432,7 @@ struct smb2_write_response {
 /*
  * XXX: According to [MS-SMB2], this should be 17; bug in the specification?
  */
-#define	SMB2_WRES_STRUCTURE_SIZE			16
+#define	SMB2_WRES_STRUCTURE_SIZE		16
 CTASSERT(sizeof(struct smb2_write_response) == SMB2_WRES_STRUCTURE_SIZE);
 
 struct smb2_oplock_break_notification {
@@ -476,7 +476,7 @@ struct smb2_lock_request {
 	uint8_t		lkreq_locks[24];
 } ATTRIBUTE_PACKED;
 
-#define	SMB2_LKREQ_STRUCTURE_SIZE			48
+#define	SMB2_LKREQ_STRUCTURE_SIZE		48
 CTASSERT(sizeof(struct smb2_lock_request) == SMB2_LKREQ_STRUCTURE_SIZE);
 
 struct smb2_lock_response {
@@ -484,7 +484,7 @@ struct smb2_lock_response {
 	uint16_t	lkres_reserved;
 } ATTRIBUTE_PACKED;
 
-#define	SMB2_LKRES_STRUCTURE_SIZE			4
+#define	SMB2_LKRES_STRUCTURE_SIZE		4
 CTASSERT(sizeof(struct smb2_lock_response) == SMB2_LKRES_STRUCTURE_SIZE);
 
 struct smb2_echo_request {
@@ -492,7 +492,7 @@ struct smb2_echo_request {
 	uint16_t	ereq_reserved;
 } ATTRIBUTE_PACKED;
 
-#define	SMB2_EREQ_STRUCTURE_SIZE			4
+#define	SMB2_EREQ_STRUCTURE_SIZE		4
 CTASSERT(sizeof(struct smb2_echo_request) == SMB2_EREQ_STRUCTURE_SIZE);
 
 struct smb2_echo_response {
@@ -500,7 +500,7 @@ struct smb2_echo_response {
 	uint16_t	eres_reserved;
 } ATTRIBUTE_PACKED;
 
-#define	SMB2_ERES_STRUCTURE_SIZE			4
+#define	SMB2_ERES_STRUCTURE_SIZE		4
 CTASSERT(sizeof(struct smb2_echo_response) == SMB2_ERES_STRUCTURE_SIZE);
 
 struct smb2_cancel_request {
@@ -508,7 +508,7 @@ struct smb2_cancel_request {
 	uint16_t	careq_reserved;
 } ATTRIBUTE_PACKED;
 
-#define	SMB2_CAREQ_STRUCTURE_SIZE			4
+#define	SMB2_CAREQ_STRUCTURE_SIZE		4
 CTASSERT(sizeof(struct smb2_cancel_request) == SMB2_CAREQ_STRUCTURE_SIZE);
 
 struct smb2_ioctl_request {
@@ -527,7 +527,7 @@ struct smb2_ioctl_request {
 	uint8_t		ireq_buffer[1];
 } ATTRIBUTE_PACKED;
 
-#define	SMB2_IREQ_STRUCTURE_SIZE			57
+#define	SMB2_IREQ_STRUCTURE_SIZE		57
 CTASSERT(sizeof(struct smb2_ioctl_request) == SMB2_IREQ_STRUCTURE_SIZE);
 
 struct smb2_ioctl_response {
@@ -544,7 +544,7 @@ struct smb2_ioctl_response {
 	uint8_t		ires_buffer[1];
 } ATTRIBUTE_PACKED;
 
-#define	SMB2_IRES_STRUCTURE_SIZE			49
+#define	SMB2_IRES_STRUCTURE_SIZE		49
 CTASSERT(sizeof(struct smb2_ioctl_response) == SMB2_IRES_STRUCTURE_SIZE);
 
 struct smb2_query_directory_request {
@@ -559,7 +559,7 @@ struct smb2_query_directory_request {
 	uint8_t		qreq_buffer[1];
 } ATTRIBUTE_PACKED;
 
-#define	SMB2_QREQ_STRUCTURE_SIZE			33
+#define	SMB2_QREQ_STRUCTURE_SIZE		33
 CTASSERT(sizeof(struct smb2_query_directory_request) == SMB2_QREQ_STRUCTURE_SIZE);
 
 struct smb2_query_directory_response {
@@ -569,7 +569,7 @@ struct smb2_query_directory_response {
 	uint8_t		qres_buffer[1];
 } ATTRIBUTE_PACKED;
 
-#define	SMB2_QRES_STRUCTURE_SIZE			9
+#define	SMB2_QRES_STRUCTURE_SIZE		9
 CTASSERT(sizeof(struct smb2_query_directory_response) == SMB2_QRES_STRUCTURE_SIZE);
 
 struct smb2_change_notify_request {
@@ -581,7 +581,7 @@ struct smb2_change_notify_request {
 	uint32_t	cnreq_reserved;
 } ATTRIBUTE_PACKED;
 
-#define	SMB2_CNREQ_STRUCTURE_SIZE			32
+#define	SMB2_CNREQ_STRUCTURE_SIZE		32
 CTASSERT(sizeof(struct smb2_change_notify_request) == SMB2_CNREQ_STRUCTURE_SIZE);
 
 struct smb2_change_notify_response {
@@ -591,7 +591,7 @@ struct smb2_change_notify_response {
 	uint8_t		cnres_buffer[1];
 } ATTRIBUTE_PACKED;
 
-#define	SMB2_CNRES_STRUCTURE_SIZE			9
+#define	SMB2_CNRES_STRUCTURE_SIZE		9
 CTASSERT(sizeof(struct smb2_change_notify_response) == SMB2_CNRES_STRUCTURE_SIZE);
 
 struct smb2_query_info_request {
@@ -608,7 +608,7 @@ struct smb2_query_info_request {
 	uint8_t		qires_buffer[1];
 } ATTRIBUTE_PACKED;
 
-#define	SMB2_QIREQ_STRUCTURE_SIZE			41
+#define	SMB2_QIREQ_STRUCTURE_SIZE		41
 CTASSERT(sizeof(struct smb2_query_info_request) == SMB2_QIREQ_STRUCTURE_SIZE);
 
 struct smb2_query_info_response {
@@ -618,7 +618,7 @@ struct smb2_query_info_response {
 	uint8_t		qires_buffer[1];
 } ATTRIBUTE_PACKED;
 
-#define	SMB2_QIRES_STRUCTURE_SIZE			9
+#define	SMB2_QIRES_STRUCTURE_SIZE		9
 CTASSERT(sizeof(struct smb2_query_info_response) == SMB2_QIRES_STRUCTURE_SIZE);
 
 struct smb2_set_info_request {
@@ -633,14 +633,14 @@ struct smb2_set_info_request {
 	uint8_t		sires_buffer[1];
 } ATTRIBUTE_PACKED;
 
-#define	SMB2_SIREQ_STRUCTURE_SIZE			33
+#define	SMB2_SIREQ_STRUCTURE_SIZE		33
 CTASSERT(sizeof(struct smb2_set_info_request) == SMB2_SIREQ_STRUCTURE_SIZE);
 
 struct smb2_set_info_response {
 	uint16_t	sires_structure_size;
 } ATTRIBUTE_PACKED;
 
-#define	SMB2_SIRES_STRUCTURE_SIZE			2
+#define	SMB2_SIRES_STRUCTURE_SIZE		2
 CTASSERT(sizeof(struct smb2_set_info_response) == SMB2_SIRES_STRUCTURE_SIZE);
 
 #if (!defined __GNUC__)
