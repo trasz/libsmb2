@@ -174,6 +174,7 @@ smb2_serve_whatever(struct smb2_packet *req)
 
 	er = (struct smb2_error_response *)(res->p_buf + res->p_buf_len);
 	er->er_structure_size = SMB2_ER_STRUCTURE_SIZE;
+	res->p_buf_len += sizeof(*er);
 
 	smb2_tcp_send(res);
 	smb2_packet_delete(res);
