@@ -45,101 +45,20 @@
 #include "smb2_status.h"
 #include "smb2_tcp.h"
 
-static struct smb2_negotiate_response *
-smb2_packet_add_nres(struct smb2_packet *p)
+static struct smb2_packet *
+smb2_server_make_response(struct smb2_packet *req, int status)
 {
-	struct smb2_packet_header_sync *ph;
-	struct smb2_negotiate_response *nres;
-	void *buf;
-	size_t len;
+	struct smb2_packet *res;
+	struct smb2_packet_header_sync *resh, *reqh;
 
-	ph = smb2_packet_add_header_sync(p);
-	ph->ph_command = SMB2_NEGOTIATE;
-	ph->ph_flags |= SMB2_FLAGS_SERVER_TO_REDIR;
+	reqh = (struct smb2_packet_header_sync *)req->p_buf;
+	res = smb2_packet_new(req->p_conn);
+	resh = smb2_packet_add_header_sync(res);
+	resh->ph_status = status;
+	resh->ph_command = reqh->ph_command;
+	resh->ph_flags |= SMB2_FLAGS_SERVER_TO_REDIR;
 
-	nres = (struct smb2_negotiate_response *)(p->p_buf + p->p_buf_len);
-	/* -1, because size includes one byte of the security buffer. */
-	p->p_buf_len += sizeof(*nres) - 1;
-	
-	nres->nres_structure_size = SMB2_NRES_STRUCTURE_SIZE;
-	nres->nres_security_mode = SMB2_NRES_NEGOTIATE_SIGNING_ENABLED;
-	nres->nres_dialect_revision = 0x0202;
-	nres->nres_max_transact_size = 65535;
-	nres->nres_max_read_size = 65535;
-	nres->nres_max_write_size = 65535;
-
-	smb2_spnego_server_make(p->p_conn, &buf, &len);
-	/* -1, because size includes one byte of the security buffer. */
-	nres->nres_security_buffer_offset = SMB2_PH_STRUCTURE_SIZE + SMB2_NRES_STRUCTURE_SIZE - 1;
-	memcpy(p->p_buf + nres->nres_security_buffer_offset, buf, len);
-	nres->nres_security_buffer_length = len;
-	p->p_buf_len += len;
-	smb2_spnego_done(p->p_conn);
-
-	return (nres);
-}
-
-static struct smb2_session_setup_response *
-smb2_packet_add_ssres(struct smb2_packet *p)
-{
-	struct smb2_packet_header_sync *ph;
-	struct smb2_session_setup_response *ssres;
-	void *buf;
-	size_t len;
-
-	ph = smb2_packet_add_header_sync(p);
-	ph->ph_command = SMB2_SESSION_SETUP;
-	if (p->p_conn->c_state != SMB2_STATE_SESSION_SETUP_DONE)
-		ph->ph_status = SMB2_STATUS_MORE_PROCESSING_REQUIRED;
-	else
-		ph->ph_status = SMB2_STATUS_SUCCESS;
-	ph->ph_flags |= SMB2_FLAGS_SERVER_TO_REDIR;
-
-	ssres = (struct smb2_session_setup_response *)(p->p_buf + p->p_buf_len);
-	/* -1, because size includes one byte of the security buffer. */
-	p->p_buf_len += sizeof(*ssres) - 1;
-	
-	ssres->ssres_structure_size = SMB2_SSRES_STRUCTURE_SIZE;
-	ssres->ssres_session_flags = 0;
-
-	smb2_spnego_server_make(p->p_conn, &buf, &len);
-	/* -1, because size includes one byte of the security buffer. */
-	ssres->ssres_security_buffer_offset = SMB2_PH_STRUCTURE_SIZE + SMB2_SSRES_STRUCTURE_SIZE - 1;
-	memcpy(p->p_buf + ssres->ssres_security_buffer_offset, buf, len);
-	ssres->ssres_security_buffer_length = len;
-	p->p_buf_len += len;
-	smb2_spnego_done(p->p_conn);
-
-	return (ssres);
-}
-
-static void
-smb2_server_add_command(struct smb2_packet *p, int cmd)
-{
-
-	switch (cmd) {
-	case SMB2_NEGOTIATE:
-		smb2_packet_add_nres(p);
-		break;
-	case SMB2_SESSION_SETUP:
-		smb2_packet_add_ssres(p);
-		break;
-	default:
-		errx(1, "smb2_packet_add_command: unknown command %d", cmd);
-	}
-}
-
-static void
-smb2_server_reply(const struct smb2_packet *request, int cmd)
-{
-	struct smb2_packet *p;
-
-	fprintf(stderr, "SEND...\n");
-	p = smb2_packet_new(request->p_conn);
-	smb2_server_add_command(p, cmd);
-	smb2_tcp_send(p);
-	smb2_packet_delete(p);
-	fprintf(stderr, "SENT.\n");
+	return (res);
 }
 
 static void
@@ -153,29 +72,60 @@ smb2_server_new_state(struct smb2_packet *p, int state)
 }
 
 static void
-smb2_parse_nreq(struct smb2_packet *p)
+smb2_parse_nreq(struct smb2_packet *req)
 {
+	struct smb2_packet *res;
 	struct smb2_negotiate_request *nreq;
+	struct smb2_negotiate_response *nres;
+	void *buf;
+	size_t len;
 
-	if (p->p_buf_len < SMB2_PH_STRUCTURE_SIZE + SMB2_NREQ_STRUCTURE_SIZE)
-		errx(1, "smb2_parse_nreq: received packet too small (%d)", p->p_buf_len);
+	if (req->p_buf_len < SMB2_PH_STRUCTURE_SIZE + SMB2_NREQ_STRUCTURE_SIZE)
+		errx(1, "smb2_parse_nreq: received packet too small (%d)", req->p_buf_len);
 
-	nreq = (struct smb2_negotiate_request *)(p->p_buf + SMB2_PH_STRUCTURE_SIZE);
+	nreq = (struct smb2_negotiate_request *)(req->p_buf + SMB2_PH_STRUCTURE_SIZE);
 
-	smb2_server_reply(p, SMB2_NEGOTIATE);
-	smb2_server_new_state(p, SMB2_STATE_NEGOTIATE_DONE);
+	smb2_server_new_state(req, SMB2_STATE_NEGOTIATE_DONE);
+
+	res = smb2_server_make_response(req, SMB2_STATUS_SUCCESS);
+	nres = (struct smb2_negotiate_response *)(res->p_buf + res->p_buf_len);
+
+	/* -1, because size includes one byte of the security buffer. */
+	res->p_buf_len += sizeof(*nres) - 1;
+
+	nres->nres_structure_size = SMB2_NRES_STRUCTURE_SIZE;
+	nres->nres_security_mode = SMB2_NRES_NEGOTIATE_SIGNING_ENABLED;
+	nres->nres_dialect_revision = 0x0202;
+	nres->nres_max_transact_size = 65535;
+	nres->nres_max_read_size = 65535;
+	nres->nres_max_write_size = 65535;
+
+	smb2_spnego_server_make(res->p_conn, &buf, &len);
+	/* -1, because size includes one byte of the security buffer. */
+	nres->nres_security_buffer_offset = SMB2_PH_STRUCTURE_SIZE + SMB2_NRES_STRUCTURE_SIZE - 1;
+	memcpy(res->p_buf + nres->nres_security_buffer_offset, buf, len);
+	nres->nres_security_buffer_length = len;
+	res->p_buf_len += len;
+	smb2_spnego_done(res->p_conn);
+
+	smb2_tcp_send(res);
+	smb2_packet_delete(res);
 }
 
 static void
-smb2_parse_ssreq(struct smb2_packet *p)
+smb2_parse_ssreq(struct smb2_packet *req)
 {
+	struct smb2_packet *res;
 	struct smb2_session_setup_request *ssreq;
+	struct smb2_session_setup_response *ssres;
 	int status;
+	void *buf;
+	size_t len;
 
-	if (p->p_buf_len < SMB2_PH_STRUCTURE_SIZE + SMB2_SSREQ_STRUCTURE_SIZE)
-		errx(1, "smb2_parse_ssreq: received packet too small (%d)", p->p_buf_len);
+	if (req->p_buf_len < SMB2_PH_STRUCTURE_SIZE + SMB2_SSREQ_STRUCTURE_SIZE)
+		errx(1, "smb2_parse_ssreq: received packet too small (%d)", req->p_buf_len);
 
-	ssreq = (struct smb2_session_setup_request *)(p->p_buf + SMB2_PH_STRUCTURE_SIZE);
+	ssreq = (struct smb2_session_setup_request *)(req->p_buf + SMB2_PH_STRUCTURE_SIZE);
 
 	/*
 	 * -1, because SMB2_SSREQ_STRUCTURE_SIZE includes one byte of the buffer.
@@ -184,25 +134,49 @@ smb2_parse_ssreq(struct smb2_packet *p)
 		errx(1, "smb2_parse_ssreq: weird security buffer offset, is %d, should be %d",
 		    ssreq->ssreq_security_buffer_offset, SMB2_PH_STRUCTURE_SIZE + SMB2_SSREQ_STRUCTURE_SIZE);
 
-	if (ssreq->ssreq_security_buffer_offset + ssreq->ssreq_security_buffer_length > p->p_buf_len)
-		errx(1, "smb2_parse_ssreq: security buffer (%d) longer than packet (%d)", ssreq->ssreq_security_buffer_length, p->p_buf_len);
+	if (ssreq->ssreq_security_buffer_offset + ssreq->ssreq_security_buffer_length > req->p_buf_len)
+		errx(1, "smb2_parse_ssreq: security buffer (%d) longer than packet (%d)", ssreq->ssreq_security_buffer_length, req->p_buf_len);
 
-	status = smb2_spnego_server_take(p->p_conn, p->p_buf + ssreq->ssreq_security_buffer_offset, ssreq->ssreq_security_buffer_length);
+	status = smb2_spnego_server_take(req->p_conn, req->p_buf + ssreq->ssreq_security_buffer_offset, ssreq->ssreq_security_buffer_length);
 	if (status == SMB2_STATUS_SUCCESS)
-		smb2_server_new_state(p, SMB2_STATE_SESSION_SETUP_DONE);
+		smb2_server_new_state(req, SMB2_STATE_SESSION_SETUP_DONE);
 
-	smb2_server_reply(p, SMB2_SESSION_SETUP);
+	if (req->p_conn->c_state != SMB2_STATE_SESSION_SETUP_DONE)
+		res = smb2_server_make_response(req, SMB2_STATUS_MORE_PROCESSING_REQUIRED);
+	else
+		res = smb2_server_make_response(req, SMB2_STATUS_SUCCESS);
+	ssres = (struct smb2_session_setup_response *)(res->p_buf + res->p_buf_len);
+	/* -1, because size includes one byte of the security buffer. */
+	res->p_buf_len += sizeof(*ssres) - 1;
+
+	ssres->ssres_structure_size = SMB2_SSRES_STRUCTURE_SIZE;
+	ssres->ssres_session_flags = 0;
+
+	smb2_spnego_server_make(res->p_conn, &buf, &len);
+	/* -1, because size includes one byte of the security buffer. */
+	ssres->ssres_security_buffer_offset = SMB2_PH_STRUCTURE_SIZE + SMB2_SSRES_STRUCTURE_SIZE - 1;
+	memcpy(res->p_buf + ssres->ssres_security_buffer_offset, buf, len);
+	ssres->ssres_security_buffer_length = len;
+	res->p_buf_len += len;
+	smb2_spnego_done(res->p_conn);
+
+	smb2_tcp_send(res);
+	smb2_packet_delete(res);
 }
 
 static void
-smb2_parse_tcreq(struct smb2_packet *p)
+smb2_parse_whatever(struct smb2_packet *req)
 {
-	struct smb2_tree_connect_request *tcreq;
+	struct smb2_packet *res;
+	struct smb2_error_response *er;
 
-	if (p->p_buf_len < SMB2_PH_STRUCTURE_SIZE + SMB2_TCREQ_STRUCTURE_SIZE)
-		errx(1, "smb2_parse_tcreq: received packet too small (%d)", p->p_buf_len);
+	res = smb2_server_make_response(req, SMB2_STATUS_INVALID_PARAMETER);
 
-	tcreq = (struct smb2_tree_connect_request *)(p->p_buf + SMB2_PH_STRUCTURE_SIZE);
+	er = (struct smb2_error_response *)(res->p_buf + res->p_buf_len);
+	er->er_structure_size = SMB2_ER_STRUCTURE_SIZE;
+
+	smb2_tcp_send(res);
+	smb2_packet_delete(res);
 }
 
 struct smb2_server_state {
@@ -212,7 +186,23 @@ struct smb2_server_state {
 } states[] = {
 	{ SMB2_STATE_NOTHING_DONE, SMB2_NEGOTIATE, smb2_parse_nreq },
 	{ SMB2_STATE_NEGOTIATE_DONE, SMB2_SESSION_SETUP, smb2_parse_ssreq },
-	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_TREE_CONNECT, smb2_parse_tcreq },
+	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_LOGOFF, smb2_parse_whatever },
+	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_TREE_CONNECT, smb2_parse_whatever },
+	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_TREE_DISCONNECT, smb2_parse_whatever },
+	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_CREATE, smb2_parse_whatever },
+	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_CLOSE, smb2_parse_whatever },
+	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_FLUSH, smb2_parse_whatever },
+	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_READ, smb2_parse_whatever },
+	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_WRITE, smb2_parse_whatever },
+	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_LOCK, smb2_parse_whatever },
+	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_IOCTL, smb2_parse_whatever },
+	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_CANCEL, smb2_parse_whatever },
+	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_ECHO, smb2_parse_whatever },
+	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_QUERY_DIRECTORY, smb2_parse_whatever },
+	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_CHANGE_NOTIFY, smb2_parse_whatever },
+	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_QUERY_INFO, smb2_parse_whatever },
+	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_SET_INFO, smb2_parse_whatever },
+	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_OPLOCK_BREAK, smb2_parse_whatever },
 	{ -1, -1, NULL }};
 
 static void
@@ -221,29 +211,30 @@ smb2_server_parse(struct smb2_packet *p)
 	struct smb2_packet_header_sync *ph;
 	bool got_smb1;
 	struct smb2_server_state *s;
+	int command;
 
 	ph = smb2_packet_parse_header(p, &got_smb1);
+	if (ph == NULL && !got_smb1)
+		return;
+
 	/*
 	 * XXX: This is evil.
 	 */
-	if (got_smb1) {
-		smb2_server_reply(p, SMB2_NEGOTIATE);
-		smb2_server_new_state(p, SMB2_STATE_NEGOTIATE_DONE);
-		return;
-	}
-	if (ph == NULL)
-		return;
+	if (got_smb1)
+		command = SMB2_NEGOTIATE;
+	else
+		command = ph->ph_command;
 
 	for (s = states; s->ss_parse != NULL; s++) {
-		if (s->ss_command != ph->ph_command)
+		if (s->ss_command != command)
 			continue;
 		if (s->ss_state != p->p_conn->c_state)
-			errx(1, "smb2_server_parse: command %d received in state %d, should be %d", ph->ph_command, p->p_conn->c_state, s->ss_state);
+			errx(1, "smb2_server_parse: command %d received in state %d, should be %d", command, p->p_conn->c_state, s->ss_state);
 		(s->ss_parse)(p);
 		return;
 	}
 
-	errx(1, "smb2_server_parse: unknown command %d", ph->ph_command);
+	errx(1, "smb2_server_parse: unknown command %d", command);
 }
 
 static int
