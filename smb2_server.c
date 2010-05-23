@@ -165,6 +165,46 @@ smb2_serve_ssreq(struct smb2_packet *req)
 }
 
 static void
+smb2_serve_careq(struct smb2_packet *req)
+{
+	struct smb2_cancel_request *careq;
+
+	if (req->p_buf_len < SMB2_PH_STRUCTURE_SIZE + SMB2_CAREQ_STRUCTURE_SIZE)
+		errx(1, "smb2_serve_careq: received packet too small (%d)", req->p_buf_len);
+
+	careq = (struct smb2_cancel_request *)(req->p_buf + SMB2_PH_STRUCTURE_SIZE);
+	if (careq->careq_structure_size != SMB2_CAREQ_STRUCTURE_SIZE)
+		errx(1, "smb2_serve_careq: wrong structure size; should be %zd, is %zd", careq->careq_structure_size, SMB2_CAREQ_STRUCTURE_SIZE);
+
+	/*
+	 * We don't really support CANCEL request.  Here, we're just ignoring it.
+	 */
+}
+
+static void
+smb2_serve_ereq(struct smb2_packet *req)
+{
+	struct smb2_packet *res;
+	struct smb2_echo_request *ereq;
+	struct smb2_echo_response *eres;
+
+	if (req->p_buf_len < SMB2_PH_STRUCTURE_SIZE + SMB2_EREQ_STRUCTURE_SIZE)
+		errx(1, "smb2_serve_ereq: received packet too small (%d)", req->p_buf_len);
+
+	ereq = (struct smb2_echo_request *)(req->p_buf + SMB2_PH_STRUCTURE_SIZE);
+	if (ereq->ereq_structure_size != SMB2_EREQ_STRUCTURE_SIZE)
+		errx(1, "smb2_serve_ereq: wrong structure size; should be %zd, is %zd", ereq->ereq_structure_size, SMB2_EREQ_STRUCTURE_SIZE);
+
+	res = smb2_server_make_response(req, SMB2_STATUS_SUCCESS);
+	eres = (struct smb2_echo_response *)(res->p_buf + res->p_buf_len);
+	eres->eres_structure_size = SMB2_ERES_STRUCTURE_SIZE;
+	res->p_buf_len += sizeof(*eres);
+
+	smb2_tcp_send(res);
+	smb2_packet_delete(res);
+}
+
+static void
 smb2_serve_whatever(struct smb2_packet *req)
 {
 	struct smb2_packet *res;
@@ -197,8 +237,8 @@ struct smb2_server_command {
 	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_WRITE, smb2_serve_whatever },
 	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_LOCK, smb2_serve_whatever },
 	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_IOCTL, smb2_serve_whatever },
-	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_CANCEL, smb2_serve_whatever },
-	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_ECHO, smb2_serve_whatever },
+	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_CANCEL, smb2_serve_careq },
+	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_ECHO, smb2_serve_ereq },
 	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_QUERY_DIRECTORY, smb2_serve_whatever },
 	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_CHANGE_NOTIFY, smb2_serve_whatever },
 	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_QUERY_INFO, smb2_serve_whatever },
