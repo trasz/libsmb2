@@ -183,6 +183,31 @@ smb2_serve_session_setup(struct smb2_packet *req)
 }
 
 static void
+smb2_serve_logoff(struct smb2_packet *req)
+{
+	struct smb2_packet *res;
+	struct smb2_logoff_request *lreq;
+	struct smb2_logoff_response *lres;
+
+	if (req->p_buf_len < SMB2_PH_STRUCTURE_SIZE + SMB2_LREQ_STRUCTURE_SIZE)
+		errx(1, "smb2_serve_logoff: received packet too small (%d)", req->p_buf_len);
+
+	lreq = (struct smb2_logoff_request *)(req->p_buf + SMB2_PH_STRUCTURE_SIZE);
+	if (lreq->lreq_structure_size != SMB2_LREQ_STRUCTURE_SIZE)
+		errx(1, "smb2_serve_logoff: wrong structure size; should be %zd, is %zd", lreq->lreq_structure_size, SMB2_LREQ_STRUCTURE_SIZE);
+
+	res = smb2_server_make_response(req, SMB2_STATUS_SUCCESS);
+	lres = (struct smb2_logoff_response *)smb2_packet_append(res, SMB2_LRES_STRUCTURE_SIZE);
+	lres->lres_structure_size = SMB2_LRES_STRUCTURE_SIZE;
+
+	smb2_tcp_send(res);
+	smb2_packet_delete(res);
+
+	smb2_disconnect(req->p_conn);
+	exit(0);
+}
+
+static void
 smb2_serve_tree_connect(struct smb2_packet *req)
 {
 	struct smb2_packet *res;
@@ -274,7 +299,7 @@ struct smb2_server_command {
 } smb2_server_commands[] = {
 	{ SMB2_STATE_NOTHING_DONE, SMB2_NEGOTIATE, smb2_serve_negotiate },
 	{ SMB2_STATE_NEGOTIATE_DONE, SMB2_SESSION_SETUP, smb2_serve_session_setup },
-	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_LOGOFF, smb2_serve_whatever },
+	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_LOGOFF, smb2_serve_logoff },
 	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_TREE_CONNECT, smb2_serve_tree_connect },
 	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_TREE_DISCONNECT, smb2_serve_whatever },
 	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_CREATE, smb2_serve_whatever },
@@ -425,9 +450,6 @@ main(int argc, char **argv)
 			smb2_server_serve(p);
 			smb2_packet_delete(p);
 		}
-
-		smb2_disconnect(conn);
-		exit(0);
 	}
 
 	return (0);
