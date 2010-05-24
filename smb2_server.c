@@ -48,7 +48,7 @@
 #include "smb2_unicode.h"
 
 static struct smb2_packet *
-smb2_server_make_response(struct smb2_packet *req, int status)
+smb2_server_make_response(const struct smb2_packet *req, int status)
 {
 	struct smb2_packet *res;
 	struct smb2_packet_header_sync *resh, *reqh;
@@ -64,7 +64,7 @@ smb2_server_make_response(struct smb2_packet *req, int status)
 }
 
 static void
-smb2_server_error_response(struct smb2_packet *req, int status)
+smb2_server_error_response(const struct smb2_packet *req, int status)
 {
 	struct smb2_packet *res;
 	struct smb2_error_response *er;
@@ -78,7 +78,7 @@ smb2_server_error_response(struct smb2_packet *req, int status)
 }
 
 static void
-smb2_server_new_state(struct smb2_packet *p, int state)
+smb2_server_new_state(const struct smb2_packet *p, int state)
 {
 
 	assert(state >= p->p_conn->c_state);
@@ -88,7 +88,7 @@ smb2_server_new_state(struct smb2_packet *p, int state)
 }
 
 static void
-smb2_serve_negotiate(struct smb2_packet *req)
+smb2_serve_negotiate(const struct smb2_packet *req)
 {
 	struct smb2_packet *res;
 	struct smb2_negotiate_request *nreq;
@@ -131,7 +131,7 @@ smb2_serve_negotiate(struct smb2_packet *req)
 }
 
 static void
-smb2_serve_session_setup(struct smb2_packet *req)
+smb2_serve_session_setup(const struct smb2_packet *req)
 {
 	struct smb2_packet *res;
 	struct smb2_session_setup_request *ssreq;
@@ -183,7 +183,7 @@ smb2_serve_session_setup(struct smb2_packet *req)
 }
 
 static void
-smb2_serve_logoff(struct smb2_packet *req)
+smb2_serve_logoff(const struct smb2_packet *req)
 {
 	struct smb2_packet *res;
 	struct smb2_logoff_request *lreq;
@@ -208,7 +208,7 @@ smb2_serve_logoff(struct smb2_packet *req)
 }
 
 static void
-smb2_serve_tree_connect(struct smb2_packet *req)
+smb2_serve_tree_connect(const struct smb2_packet *req)
 {
 	struct smb2_packet *res;
 	struct smb2_tree_connect_request *tcreq;
@@ -247,7 +247,7 @@ smb2_serve_tree_connect(struct smb2_packet *req)
 }
 
 static void
-smb2_serve_cancel(struct smb2_packet *req)
+smb2_serve_cancel(const struct smb2_packet *req)
 {
 	struct smb2_cancel_request *careq;
 
@@ -264,7 +264,7 @@ smb2_serve_cancel(struct smb2_packet *req)
 }
 
 static void
-smb2_serve_echo(struct smb2_packet *req)
+smb2_serve_echo(const struct smb2_packet *req)
 {
 	struct smb2_packet *res;
 	struct smb2_echo_request *ereq;
@@ -286,7 +286,7 @@ smb2_serve_echo(struct smb2_packet *req)
 }
 
 static void
-smb2_serve_whatever(struct smb2_packet *req)
+smb2_serve_whatever(const struct smb2_packet *req)
 {
 
 	smb2_server_error_response(req, SMB2_STATUS_INVALID_PARAMETER);
@@ -295,7 +295,7 @@ smb2_serve_whatever(struct smb2_packet *req)
 struct smb2_server_command {
 	int	sc_state;
 	int	sc_command;
-	void	(*sc_serve)(struct smb2_packet *);
+	void	(*sc_serve)(const struct smb2_packet *);
 } smb2_server_commands[] = {
 	{ SMB2_STATE_NOTHING_DONE, SMB2_NEGOTIATE, smb2_serve_negotiate },
 	{ SMB2_STATE_NEGOTIATE_DONE, SMB2_SESSION_SETUP, smb2_serve_session_setup },

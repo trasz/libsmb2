@@ -30,6 +30,6 @@
 #define	SMB2_UNICODE_H
 
 void	smb2_unicode_init(void);
-char	*smb2_unicode_to_utf8(void *buf, size_t len);
+char	*smb2_unicode_to_utf8(const void *buf, size_t len);
 
 #endif /* !SMB2_UNICODE_H */

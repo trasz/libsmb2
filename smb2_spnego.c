@@ -302,14 +302,15 @@ smb2_spnego_make_neg_token_init_2(struct smb2_connection *conn, void **buf, size
 }
 
 static void
-smb2_spnego_take_neg_token_init(struct smb2_connection *conn, void *buf, size_t length)
+smb2_spnego_take_neg_token_init(struct smb2_connection *conn, const void *buf, size_t length)
 {
 	struct smb2_der *blob, *nti, *mech_types, *tmp, *negotiate;
 	char *mech_type_oid;
 	void *ntlm_buf;
 	size_t ntlm_len;
 
-	blob = smb2_der_new_from_buf(buf, length);
+	/* XXX: Typecast. */
+	blob = smb2_der_new_from_buf((void *)buf, length);
 	nti = smb2_spnego_unwrap_nti(blob);
 	if (nti == NULL)
 		errx(1, "smb2_spnego_take_neg_token_init: didn't found SPNEGO data");
@@ -335,7 +336,7 @@ smb2_spnego_take_neg_token_init(struct smb2_connection *conn, void *buf, size_t 
 }
 
 int
-smb2_spnego_server_take(struct smb2_connection *conn, void *buf, size_t length)
+smb2_spnego_server_take(struct smb2_connection *conn, const void *buf, size_t length)
 {
 	/* XXX */
 	if (conn->c_spnego_state == SMB2_SPNEGO_SERVER_STATE_NTR_DONE)

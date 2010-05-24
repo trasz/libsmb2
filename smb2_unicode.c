@@ -55,11 +55,12 @@ smb2_unicode_init(void)
 }
 
 char *
-smb2_unicode_to_utf8(void *buf, size_t len)
+smb2_unicode_to_utf8(const void *buf, size_t len)
 {
 	size_t converted;
 	size_t inbuflen = len, outbuflen;
-	char *inbuf = buf, *outbuf, *outbufstart;
+	const char *inbuf = buf;
+	char *outbuf, *outbufstart;
 
 	outbuflen = len;
 	/* +1 for trailing '\0'. */
@@ -67,7 +68,8 @@ smb2_unicode_to_utf8(void *buf, size_t len)
 	if (outbuf == NULL)
 		err(1, "smb2_unicode_to_utf8");
 
-	converted = iconv(smb2_unicode_cd_to_utf8, &inbuf, &inbuflen, &outbuf, &outbuflen);
+	/* XXX: Typecast. */
+	converted = iconv(smb2_unicode_cd_to_utf8, (char **)&inbuf, &inbuflen, &outbuf, &outbuflen);
 	if (converted == (size_t)-1)
 		err(1, "smb2_unicode_to_utf8: iconv");
 
