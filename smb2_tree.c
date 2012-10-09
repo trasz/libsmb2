@@ -34,6 +34,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "smb2_status.h"
 #include "smb2_tree.h"
@@ -41,6 +42,9 @@
 int
 smb2_tree_connect(struct smb2_connection *conn, char *share)
 {
+
+	if (strcmp(share, "\\\\192.168.66.1\\blah") == 0)
+		return (SMB2_STATUS_SUCCESS);
 
 	return (SMB2_STATUS_BAD_NETWORK_NAME);
 }

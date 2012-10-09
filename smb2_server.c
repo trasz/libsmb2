@@ -99,8 +99,8 @@ smb2_serve_negotiate(const struct smb2_packet *req)
 	if (req->p_buf_len < SMB2_PH_STRUCTURE_SIZE + SMB2_NREQ_STRUCTURE_SIZE)
 		errx(1, "smb2_serve_negotiate: received packet too small (%d)", req->p_buf_len);
 
-#ifdef doesnt_work_with_smb1_negotiate
 	nreq = (struct smb2_negotiate_request *)(req->p_buf + SMB2_PH_STRUCTURE_SIZE);
+#ifdef doesnt_work_with_smb1_negotiate
 	if (nreq->nreq_structure_size != SMB2_NREQ_STRUCTURE_SIZE)
 		errx(1, "smb2_serve_negotiate: wrong structure size; should be %zd, is %zd", nreq->nreq_structure_size, SMB2_NREQ_STRUCTURE_SIZE);
 #endif
@@ -247,6 +247,30 @@ smb2_serve_tree_connect(const struct smb2_packet *req)
 }
 
 static void
+smb2_serve_create(const struct smb2_packet *req)
+{
+	struct smb2_packet *res;
+	struct smb2_create_request *creq;
+	struct smb2_create_response *cres;
+
+	if (req->p_buf_len < SMB2_PH_STRUCTURE_SIZE + SMB2_CREQ_STRUCTURE_SIZE)
+		errx(1, "smb2_serve_create: received packet too small (%d)", req->p_buf_len);
+
+	creq = (struct smb2_create_request *)(req->p_buf + SMB2_PH_STRUCTURE_SIZE);
+	if (creq->creq_structure_size != SMB2_CREQ_STRUCTURE_SIZE)
+		errx(1, "smb2_serve_create: wrong structure size; should be %zd, is %zd", creq->creq_structure_size, SMB2_CREQ_STRUCTURE_SIZE);
+
+	res = smb2_server_make_response(req, SMB2_STATUS_SUCCESS);
+	cres = (struct smb2_create_response *)smb2_packet_append(res, SMB2_CRES_STRUCTURE_SIZE);
+	cres->cres_structure_size = SMB2_CRES_STRUCTURE_SIZE;
+	cres->cres_oplock_level = SMB2_OPLOCK_LEVEL_NONE;
+	cres->cres_create_action = SMB2_CREATE_ACTION_FILE_OPENED;
+
+	smb2_tcp_send(res);
+	smb2_packet_delete(res);
+}
+
+static void
 smb2_serve_cancel(const struct smb2_packet *req)
 {
 	struct smb2_cancel_request *careq;
@@ -302,7 +326,7 @@ struct smb2_server_command {
 	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_LOGOFF, smb2_serve_logoff },
 	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_TREE_CONNECT, smb2_serve_tree_connect },
 	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_TREE_DISCONNECT, smb2_serve_whatever },
-	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_CREATE, smb2_serve_whatever },
+	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_CREATE, smb2_serve_create },
 	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_CLOSE, smb2_serve_whatever },
 	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_FLUSH, smb2_serve_whatever },
 	{ SMB2_STATE_SESSION_SETUP_DONE, SMB2_READ, smb2_serve_whatever },
